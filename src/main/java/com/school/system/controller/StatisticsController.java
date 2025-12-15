@@ -5,6 +5,7 @@ import com.school.system.mapper.CourseMapper;
 import com.school.system.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,13 +22,17 @@ public class StatisticsController {
     @Autowired
     private CourseMapper courseMapper;
 
-    /**
-     * 获取首页统计数据
-     * 1. 用户分布 (饼图数据)
-     * 2. 热门课程 (柱状图数据)
-     */
     @GetMapping("/dashboard")
-    public Result<Map<String, Object>> getDashboardStats() {
+    /**
+     * 获取首页统计数据：用户分布和热门课程，仅管理员可用。
+     *
+     * @param currentUserType 当前用户角色
+     * @return 统计数据
+     */
+    public Result<Map<String, Object>> getDashboardStats(@RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType)) {
+            return Result.error("无权限查看统计数据");
+        }
         Map<String, Object> data = new HashMap<>();
 
         // 1. 统计各角色人数

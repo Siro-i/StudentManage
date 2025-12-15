@@ -18,6 +18,11 @@ public class JwtUtils {
 
     /**
      * 生成 Token
+     *
+     * @param userId   用户 ID
+     * @param userName 用户名
+     * @param userType 角色
+     * @return JWT 字符串
      */
     public static String generateToken(Long userId, String userName, String userType) {
         return Jwts.builder()
@@ -33,6 +38,9 @@ public class JwtUtils {
     /**
      * 解析 Token 获取 Claims (载荷)
      * 如果 Token 无效或过期，这里会抛出异常
+     *
+     * @param token JWT 字符串
+     * @return 载荷 Claims
      */
     public static Claims parseToken(String token) {
         return Jwts.parser()

@@ -41,16 +41,25 @@ public class UserController {
     @Autowired
     private TeacherMapper teacherMapper;
 
-    /**
-     * 分页查询用户列表
-     * GET /api/users?pageNum=1&pageSize=10
-     */
     @GetMapping
+    /**
+     * 分页查询用户列表，仅管理员可用。
+     *
+     * @param pageNum         页码
+     * @param pageSize        每页数量
+     * @param condition       查询条件
+     * @param currentUserType 当前用户角色
+     * @return 分页用户列表
+     */
     public Result<PageInfo<User>> listUsers(
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize,
-            User condition
+            User condition,
+            @RequestAttribute("userType") String currentUserType
     ) {
+        if (!"admin".equals(currentUserType)) {
+            return Result.error("无权限访问用户列表");
+        }
         // 1. 开启分页
         PageHelper.startPage(pageNum, pageSize);
 
@@ -63,13 +72,19 @@ public class UserController {
         return Result.success(pageInfo);
     }
 
-    /**
-     * 删除用户
-     * 前端请求: DELETE /api/users/{userId}
-     * 对应 UserOperable.deleteUser() 接口
-     */
     @DeleteMapping("/{userId}")
-    public Result<Void> deleteUser(@PathVariable Long userId) {
+    /**
+     * 删除用户（级联关联数据），仅管理员可用。
+     *
+     * @param userId          目标用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> deleteUser(@PathVariable Long userId,
+                                   @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType)) {
+            return Result.error("无权限删除用户");
+        }
         boolean success = userService.deleteUser(userId);
         if (success) {
             return Result.success(null);
@@ -78,13 +93,24 @@ public class UserController {
         }
     }
 
-    /**
-     * 修改密码
-     * POST /api/users/password
-     */
     @PostMapping("/password")
-    public Result<Void> updatePassword(@RequestBody Map<String, Object> params) {
+    /**
+     * 修改用户密码。管理员可改任意用户，其他角色仅能改自己。
+     *
+     * @param params          请求体包含 userId 和 newPwd
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> updatePassword(@RequestBody Map<String, Object> params,
+                                       @RequestAttribute("userId") Long currentUserId,
+                                       @RequestAttribute("userType") String currentUserType) {
         Long userId = Long.valueOf(params.get("userId").toString());
+
+        // 非管理员只能修改自己的密码
+        if (!"admin".equals(currentUserType) && !userId.equals(currentUserId)) {
+            return Result.error("无权限修改他人密码");
+        }
         String newPwd = (String) params.get("newPwd");
 
         // --- 加密新密码 ---
@@ -98,11 +124,20 @@ public class UserController {
         return Result.success(null);
     }
 
-    /**
-     * 新增或更新用户
-     */
     @RequestMapping(method = {RequestMethod.POST, RequestMethod.PUT})
-    public Result<Void> saveUser(@RequestBody Map<String, Object> params) {
+    /**
+     * 新增或更新用户，仅管理员可用。
+     *
+     * @param params          用户及扩展信息
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> saveUser(@RequestBody Map<String, Object> params,
+                                 @RequestAttribute("userType") String currentUserType) {
+
+        if (!"admin".equals(currentUserType)) {
+            return Result.error("无权限操作用户");
+        }
 
         // --- 1. 数据校验  ---
         String phone = (String) params.get("userPhone");
@@ -192,11 +227,19 @@ public class UserController {
 
         return Result.success(null);
     }
-    /**
-     * 批量导入学生
-     */
     @PostMapping("/import")
-    public Result<Void> importUsers(@RequestParam("file") MultipartFile file) {
+    /**
+     * 导入用户数据
+     *
+     * @param file Excel文件
+     * @param currentUserType 当前用户角色
+     * @return 导入结果
+     */
+    public Result<Void> importUsers(@RequestParam("file") MultipartFile file,
+                                    @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType)) {
+            return Result.error("无权限导入用户");
+        }
         try {
             // 这里把 userService 传给监听器
             EasyExcel.read(file.getInputStream(), UserImportDTO.class, new UserImportListener(userService))
@@ -208,11 +251,20 @@ public class UserController {
         }
     }
 
-    /**
-     * 下载导入模板 (动态生成)
-     */
     @GetMapping("/import/template")
-    public void downloadTemplate(HttpServletResponse response) throws IOException {
+    /**
+     * 下载用户导入模板，仅管理员可用。
+     *
+     * @param response        响应对象
+     * @param currentUserType 当前用户角色
+     * @throws IOException 写出异常
+     */
+    public void downloadTemplate(HttpServletResponse response,
+                                 @RequestAttribute("userType") String currentUserType) throws IOException {
+        if (!"admin".equals(currentUserType)) {
+            response.setStatus(403);
+            return;
+        }
         // 1. 设置响应头类型
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("utf-8");

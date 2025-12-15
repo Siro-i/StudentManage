@@ -28,6 +28,10 @@ public class UserService {
 
     /**
      * 登录逻辑
+     *
+     * @param username 用户名
+     * @param password 明文密码
+     * @return 登录是否成功
      */
     public boolean login(String username, String password) {
         User user = userMapper.findByUsername(username);
@@ -41,6 +45,9 @@ public class UserService {
 
     /**
      * 重置密码
+     *
+     * @param userId      目标用户 ID
+     * @param newPassword 新密码（明文）
      */
     public void resetPassword(Long userId, String newPassword) {
         User user = userMapper.selectById(userId);
@@ -54,6 +61,9 @@ public class UserService {
 
     /**
      * 新增用户 (事务管理)
+     *
+     * @param user      基础用户信息
+     * @param extraInfo 扩展信息（学生/教师字段）
      */
     @Transactional(rollbackFor = Exception.class) // 建议加上 rollbackFor，防止异常吞掉
     public void addUser(User user, Map<String, Object> extraInfo) {
@@ -114,6 +124,9 @@ public class UserService {
 
     /**
      * 查询用户列表
+     *
+     * @param condition 查询条件
+     * @return 用户列表
      */
     public List<User> listUsers(User condition) {
         return userMapper.selectList(condition);
@@ -121,6 +134,9 @@ public class UserService {
 
     /**
      * 删除用户 (级联删除)
+     *
+     * @param userId 用户 ID
+     * @return 是否删除成功
      */
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteUser(Long userId) {
@@ -153,6 +169,8 @@ public class UserService {
 
     /**
      * 更新用户基本信息
+     *
+     * @param user 待更新的用户信息
      */
     public void updateUserBasic(User user) {
         // 如果这里包含密码修改，也要加密，但通常 updateBasic 不含密码

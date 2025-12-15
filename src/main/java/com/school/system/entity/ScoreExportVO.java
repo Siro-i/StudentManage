@@ -4,7 +4,6 @@ import com.alibaba.excel.annotation.ExcelProperty;
 import com.alibaba.excel.annotation.write.style.ColumnWidth;
 import lombok.Data;
 
-import java.util.Date;
 
 @Data
 @ColumnWidth(20) // 设置列宽

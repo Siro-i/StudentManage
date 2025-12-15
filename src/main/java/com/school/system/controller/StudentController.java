@@ -16,14 +16,20 @@ public class StudentController {
     @Autowired
     private StudentMapper studentMapper;
 
+    @GetMapping("/info")
     /**
-     * 获取学生详细个人信息
-     * GET /api/student/info/{userId}
-     * 对应文档 3. 功能详细设计 - 学生的个人信息查看功能
+     * 学生获取个人档案信息，绑定当前登录学生。
+     *
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 学生档案
      */
-    @GetMapping("/info/{userId}")
-    public Result<Student> getStudentInfo(@PathVariable Long userId) {
-        Student student = studentMapper.selectByUserId(userId);
+    public Result<Student> getStudentInfo(@RequestAttribute("userId") Long currentUserId,
+                                          @RequestAttribute("userType") String currentUserType) {
+        if (!"student".equals(currentUserType)) {
+            return Result.error("仅学生可查看个人信息");
+        }
+        Student student = studentMapper.selectByUserId(currentUserId);
         if (student == null) {
             return Result.error("未找到学生档案信息");
         }
@@ -33,13 +39,21 @@ public class StudentController {
     @Autowired
     private com.school.system.service.UserService userService; // 注入 UserService 用于更新 user_table
 
-    /**
-     * 学生修改个人信息 (仅限手机号、邮箱)
-     * PUT /api/student/profile
-     */
     @PutMapping("/profile")
+    /**
+     * 学生修改个人联系方式（手机号、邮箱），仅允许当前学生自身。
+     *
+     * @param params          待更新数据
+     * @param userId          当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
     public Result<Void> updateStudentProfile(@RequestBody Map<String, String> params,
-                                             @RequestAttribute("userId") Long userId) {
+                                             @RequestAttribute("userId") Long userId,
+                                             @RequestAttribute("userType") String currentUserType) {
+        if (!"student".equals(currentUserType)) {
+            return Result.error("仅学生可修改个人资料");
+        }
 
         // 1. 获取允许修改的字段
         String phone = params.get("userPhone");

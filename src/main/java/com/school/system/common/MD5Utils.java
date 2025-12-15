@@ -18,6 +18,12 @@ public class MD5Utils {
         }
     }
 
+    /**
+     * 将字节数组转换为十六进制字符串
+     * 
+     * @param bytes 字节数组
+     * @return 十六进制字符串
+     */
     private static String toHex(byte[] bytes) {
         final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
         StringBuilder ret = new StringBuilder(bytes.length * 2);

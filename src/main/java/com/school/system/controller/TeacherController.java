@@ -16,22 +16,39 @@ public class TeacherController {
     private com.school.system.mapper.TeacherMapper teacherMapper;
     @Autowired
     private com.school.system.service.UserService userService;
+    @GetMapping("/info")
     /**
-     * 1. 获取教师个人详细档案
+     * 教师查看个人档案信息，绑定当前登录教师。
+     *
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 教师档案
      */
-    @GetMapping("/info/{userId}")
-
-    public Result<Teacher> getTeacherInfo(@PathVariable Long userId) {
-        Teacher teacher = teacherMapper.selectByUserId(userId);
+    public Result<Teacher> getTeacherInfo(@RequestAttribute("userId") Long currentUserId,
+                                          @RequestAttribute("userType") String currentUserType) {
+        if (!"teacher".equals(currentUserType)) {
+            return Result.error("仅教师可查看个人信息");
+        }
+        Teacher teacher = teacherMapper.selectByUserId(currentUserId);
         return Result.success(teacher);
     }
 
-    /**
-     * 2. 修改个人资料 (带正则验证)
-     */
     @PutMapping("/profile")
+    /**
+     * 教师修改个人联系方式（手机号、邮箱），仅允许当前教师自身。
+     *
+     * @param params          待更新数据
+     * @param userId          当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
     public Result<Void> updateTeacherProfile(@RequestBody Map<String, String> params,
-                                             @RequestAttribute("userId") Long userId) {
+                                             @RequestAttribute("userId") Long userId,
+                                             @RequestAttribute("userType") String currentUserType) {
+
+        if (!"teacher".equals(currentUserType)) {
+            return Result.error("仅教师可修改个人资料");
+        }
 
         // 数据格式校验
         String phone = params.get("userPhone");

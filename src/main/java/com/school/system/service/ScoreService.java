@@ -22,6 +22,12 @@ public class ScoreService {
 
 
 
+    /**
+     * 查询课程下所有学生成绩列表。
+     *
+     * @param courseId 课程 ID
+     * @return 成绩列表
+     */
     public List<Map<String, Object>> listStudentScores(Long courseId) {
         return studentCourseMapper.selectStudentScoreList(courseId);
     }
@@ -29,8 +35,13 @@ public class ScoreService {
     /**
      * 录入/修改成绩 [cite: 82, 110]
      * 逻辑：校验分数范围，更新 student_course_table
+     *
+     * @param studentId 学生档案 ID
+     * @param courseId  课程 ID
+     * @param score     分数 0-100
+     * @return 是否更新成功
      */
-    public boolean setScore(Long teacherId, Long studentId, Long courseId, Integer score) {
+    public boolean setScore(Long studentId, Long courseId, Integer score) {
 
         // 1. 校验分数范围 [cite: 82]
         if (score == null || score < 0 || score > 100) {
@@ -51,19 +62,27 @@ public class ScoreService {
 
 
     /**
-     * 成绩统计 [cite: 111]
-     * 获取某门课的平均分、最高分等
+     * 成绩统计
+     * 获取某门课的平均分、最高分等统计信息
+     * 
+     * @param courseId 课程ID
+     * @return 统计结果
      */
     public Object statisticCourseScore(Long courseId) {
-        // 返回 Map 或 自定义 VO
         return studentCourseMapper.getCourseStatistics(courseId);
     }
     /**
      * 查询我的成绩
-     * 获取我选修的所有课程的成绩
+     * 获取当前用户选修的所有课程的成绩
+     * 
+     * @param userId 当前登录用户ID
+     * @return 成绩列表
      */
     public List<Map<String, Object>> listMyScores(Long userId) {
-
-        return studentCourseMapper.selectMyScoreList(userId);
+        Student student = studentMapper.selectByUserId(userId);
+        if (student == null) {
+            throw new ServiceException("未找到学生档案");
+        }
+        return studentCourseMapper.selectMyScoreList(student.getStudentId());
     }
 }

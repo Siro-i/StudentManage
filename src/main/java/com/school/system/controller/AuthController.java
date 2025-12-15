@@ -7,6 +7,7 @@ import com.school.system.mapper.UserMapper;
 import com.school.system.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,11 +23,13 @@ public class AuthController {
 
     @Autowired
     private UserMapper userMapper;
-    /**
-     * 登录接口
-     * 对应 Loginable.login()
-     */
     @PostMapping("/login")
+    /**
+     * 用户登录接口
+     *
+     * @param loginData 登录数据，包含用户名和密码
+     * @return 登录结果，包含token和用户信息
+     */
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> loginData) {
         String username = loginData.get("userName");
         String password = loginData.get("userPwd");
@@ -50,13 +53,25 @@ public class AuthController {
         }
     }
 
-    /**
-     * 修改密码
-     * 对应 Loginable.resetPassword()
-     */
     @PostMapping("/reset-password")
-    public Result<Void> resetPassword(@RequestBody Map<String, Object> params) {
+    /**
+     * 重置用户密码
+     *
+     * @param params 请求参数，包含用户ID和新密码
+     * @param currentUserId 当前用户ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> resetPassword(@RequestBody Map<String, Object> params,
+                                      @RequestAttribute("userId") Long currentUserId,
+                                      @RequestAttribute("userType") String currentUserType) {
         Long userId = Long.valueOf(params.get("userId").toString());
+
+        // 非管理员只能修改自己的密码
+        if (!"admin".equals(currentUserType) && !userId.equals(currentUserId)) {
+            return Result.error("无权限修改他人密码");
+        }
+
         String newPwd = params.get("newPassword").toString();
         userService.resetPassword(userId, newPwd);
         return Result.success(null);

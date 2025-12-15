@@ -1,11 +1,9 @@
 package com.school.system.controller;
 
+import com.school.system.common.Result;
 import com.school.system.common.ServiceException;
 import com.school.system.entity.Course;
-import com.school.system.common.Result;
-import com.school.system.entity.StudentCourse;
 import com.school.system.mapper.CourseMapper;
-import com.school.system.mapper.StudentCourseMapper;
 import com.school.system.service.CourseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,29 +19,39 @@ public class CourseController {
     private CourseService courseService;
     @Autowired
     private CourseMapper courseMapper;
-    @Autowired
-    private StudentCourseMapper studentCourseMapper;
 
-
-
-    /**
-     * 查询课程列表
-     * 对应 CourseOperable.listCourses()
-     * 支持传参筛选，例如 ?teacherId=1 或 ?name=Java
-     */
     @GetMapping
+    /**
+     * 查询课程列表，支持按课程名、教师、状态等条件筛选。
+     *
+     * @param condition 查询条件（自动绑定请求参数）
+     * @return 课程列表
+     */
     public Result<List<Course>> listCourses(Course condition) {
         // SpringMVC 会自动将请求参数映射到 Course 对象中
         List<Course> list = courseService.listCourses(condition);
         return Result.success(list);
     }
 
-    /**
-     * 添加课程 (教师/管理员)
-     * 对应 CourseOperable.addCourse()
-     */
     @PostMapping
-    public Result<Void> addCourse(@RequestBody Course course) {
+    /**
+     * 添加课程。管理员或教师可调用，教师仅能为自己创建课程。
+     *
+     * @param course          课程信息
+     * @param currentUserType 当前用户角色
+     * @param currentUserId   当前用户 ID
+     * @return 操作结果
+     */
+    public Result<Void> addCourse(@RequestBody Course course,
+                                  @RequestAttribute("userType") String currentUserType,
+                                  @RequestAttribute("userId") Long currentUserId) {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            return Result.error("无权限添加课程");
+        }
+        // 非管理员的教师只能为自己创建课程
+        if ("teacher".equals(currentUserType)) {
+            course.setTeacherId(currentUserId);
+        }
         checkRoomConflict(course);
         if (course.getSelectedNum() == null) course.setSelectedNum(0); // 防止空指针
         course.setCourseStatus(1);
@@ -54,92 +62,105 @@ public class CourseController {
 
     // --- 选课相关 (对应 Selectable 接口) ---
 
-    /**
-     * 学生选课
-     * 对应 Selectable.selectCourse()
-     */
     @PostMapping("/{courseId}/select")
-    public Result<Void> selectCourse(@PathVariable Long courseId, @RequestParam Long studentId) {
-        // 1. 检查是否重复选课 (原有逻辑)
-        int count = studentCourseMapper.countByStudentIdAndCourseId(studentId, courseId);
-        if (count > 0) throw new ServiceException("你已经选过这门课了");
-
-        // 2. 检查课程状态和人数 (原有逻辑)
-        Course course = courseMapper.selectById(courseId);
-        if (course.getCourseStatus() == 0) throw new ServiceException("课程已停止选课");
-        if (course.getSelectedNum() >= course.getMaxNum()) throw new ServiceException("课程人数已满");
-
-        // === 3. 新增：时间冲突检测 ===
-        // 3.1 获取学生当前已选的所有课程
-        List<Course> myCourses = courseMapper.selectByStudentId(studentId); // 需要在 Mapper 确认有这个方法
-
-        // 3.2 遍历检查
-        if (course.getCourseTime() != null && !course.getCourseTime().isEmpty()) {
-            for (Course existing : myCourses) {
-                // 如果时间字符串完全相等，就认为冲突
-                if (course.getCourseTime().equals(existing.getCourseTime())) {
-                    throw new ServiceException("选课冲突！该时间段你已有课程: " + existing.getCourseName());
-                }
-            }
+    /**
+     * 学生选课，使用当前登录学生身份绑定。
+     *
+     * @param courseId        课程 ID
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> selectCourse(@PathVariable Long courseId,
+                                     @RequestAttribute("userId") Long currentUserId,
+                                     @RequestAttribute("userType") String currentUserType) {
+        if (!"student".equals(currentUserType)) {
+            return Result.error("仅学生可选课");
         }
-        // =========================
-
-        // 4. 执行选课 (插入记录 + 课程人数+1)
-        StudentCourse sc = new StudentCourse();
-        sc.setStudentId(studentId);
-        sc.setCourseId(courseId);
-        sc.setSelectTime(new Date());
-        studentCourseMapper.insert(sc);
-
-        course.setSelectedNum(course.getSelectedNum() + 1);
-        courseMapper.update(course);
-
+        courseService.selectCourse(currentUserId, courseId);
         return Result.success(null);
     }
 
-    /**
-     * 学生退课
-     * POST /api/courses/{courseId}/drop
-     */
     @PostMapping("/{courseId}/drop")
-    public Result<Void> dropCourse(@PathVariable Long courseId, @RequestParam Long studentId) {
-        try {
-            courseService.dropCourse(studentId, courseId);
-            return Result.success(null);
-        } catch (Exception e) {
-            return Result.error(e.getMessage());
+    /**
+     * 学生退课，绑定当前登录学生。
+     *
+     * @param courseId        课程 ID
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> dropCourse(@PathVariable Long courseId,
+                                   @RequestAttribute("userId") Long currentUserId,
+                                   @RequestAttribute("userType") String currentUserType) {
+        if (!"student".equals(currentUserType)) {
+            return Result.error("仅学生可退课");
         }
+        courseService.dropCourse(currentUserId, courseId);
+        return Result.success(null);
     }
 
-    /**
-     * 删除课程 (级联删除选课记录)
-     * 对应 CourseOperable.deleteCourse()
-     */
     @DeleteMapping("/{courseId}")
-    public Result<Void> deleteCourse(@PathVariable Long courseId) {
+    /**
+     * 删除课程并级联删除选课记录。教师仅能删除自己的课程。
+     *
+     * @param courseId        课程 ID
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> deleteCourse(@PathVariable Long courseId,
+                                     @RequestAttribute("userId") Long currentUserId,
+                                     @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            return Result.error("无权限删除课程");
+        }
+        Course course = courseMapper.selectById(courseId);
+        if (course == null) {
+            return Result.success(null);
+        }
+        if ("teacher".equals(currentUserType) && course.getTeacherId() != null && !course.getTeacherId().equals(currentUserId)) {
+            return Result.error("无权限删除其他教师的课程");
+        }
         courseService.deleteCourse(courseId);
         return Result.success(null);
     }
 
-    /**
-     * 修改课程
-     * PUT /api/courses
-     */
     @PutMapping
-    public Result<Void> updateCourse(@RequestBody Course course) {
+    /**
+     * 修改课程信息，教师仅能修改自己的课程。
+     *
+     * @param course          待更新课程信息
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> updateCourse(@RequestBody Course course,
+                                     @RequestAttribute("userId") Long currentUserId,
+                                     @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            return Result.error("无权限修改课程");
+        }
+        Course dbCourse = courseMapper.selectById(course.getCourseId());
+        if (dbCourse != null && "teacher".equals(currentUserType) && dbCourse.getTeacherId() != null
+                && !dbCourse.getTeacherId().equals(currentUserId)) {
+            return Result.error("无权限修改其他教师的课程");
+        }
         checkRoomConflict(course);
         courseMapper.update(course);
         return Result.success(null);
     }
 
     /**
-     * 核心逻辑：检查教室占用情况
+     * 检查教室占用冲突
+     *
+     * @param course 待排课课程信息
+     * @throws ServiceException 若发现教室冲突，抛出异常
+     *
      */
     private void checkRoomConflict(Course course) {
         if (course.getCourseTime() == null || course.getCourseTime().isEmpty()) return;
         if (course.getCourseRoom() == null || course.getCourseRoom().isEmpty()) return;
-
-        // 查询数据库里有没有撞车的课
         List<Course> conflicts = courseMapper.selectByTimeAndRoom(course.getCourseTime(), course.getCourseRoom());
 
         for (Course existing : conflicts) {

@@ -30,6 +30,11 @@ public class StudentCourse {
     private Date scUpdatetime;
 
 
+    /**
+     * 设置选课时间
+     * 
+     * @param date 选课时间
+     */
     public void setSelectTime(Date date) {
         this.scSelecttime = date;
     }

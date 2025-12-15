@@ -29,7 +29,6 @@ public class ScoreController {
 
     @Data
     public static class ScoreEntryRequest {
-        private Long teacherId;
         private Long studentId;
         private Long courseId;
         private Integer score;
@@ -40,10 +39,22 @@ public class ScoreController {
      * 对应 ScoreOperable.setScore()
      */
     @PostMapping("/entry")
-    public Result<Void> setScore(@RequestBody ScoreEntryRequest request) {
+    /**
+     * 录入或修改课程成绩，仅教师/管理员可用。
+     *
+     * @param request         成绩录入请求体
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 操作结果
+     */
+    public Result<Void> setScore(@RequestBody ScoreEntryRequest request,
+                                 @RequestAttribute("userId") Long currentUserId,
+                                 @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            return Result.error("无权限录入成绩");
+        }
         try {
             scoreService.setScore(
-                    request.getTeacherId(),
                     request.getStudentId(),
                     request.getCourseId(),
                     request.getScore()
@@ -59,7 +70,18 @@ public class ScoreController {
      * 对应 ScoreOperable.statisticCourseScore()
      */
     @GetMapping("/statistics/{courseId}")
-    public Result<Object> getCourseStats(@PathVariable Long courseId) {
+    /**
+     * 获取课程成绩统计，仅教师/管理员可用。
+     *
+     * @param courseId        课程 ID
+     * @param currentUserType 当前用户角色
+     * @return 统计数据
+     */
+    public Result<Object> getCourseStats(@PathVariable Long courseId,
+                                         @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            return Result.error("无权限查看课程统计");
+        }
         Object stats = scoreService.statisticCourseScore(courseId);
         return Result.success(stats);
     }
@@ -68,9 +90,20 @@ public class ScoreController {
      * GET /api/scores/student/{studentId}
      * 对应文档 2.3.3 成绩查询(学生)
      */
-    @GetMapping("/student/{studentId}")
-    public Result<List<Map<String, Object>>> listMyScores(@PathVariable Long studentId) {
-        List<Map<String, Object>> list = scoreService.listMyScores(studentId);
+    @GetMapping("/student/me")
+    /**
+     * 学生查看个人成绩单，绑定当前登录学生。
+     *
+     * @param currentUserId   当前用户 ID
+     * @param currentUserType 当前用户角色
+     * @return 成绩列表
+     */
+    public Result<List<Map<String, Object>>> listMyScores(@RequestAttribute("userId") Long currentUserId,
+                                                          @RequestAttribute("userType") String currentUserType) {
+        if (!"student".equals(currentUserType)) {
+            return Result.error("仅学生可查看个人成绩");
+        }
+        List<Map<String, Object>> list = scoreService.listMyScores(currentUserId);
         return Result.success(list);
     }
     /**
@@ -79,7 +112,18 @@ public class ScoreController {
      * 对应文档 2.3.4 成绩查询(教师)
      */
     @GetMapping("/course/{courseId}")
-    public Result<List<Map<String, Object>>> listStudentScores(@PathVariable Long courseId) {
+    /**
+     * 教师/管理员查看课程成绩列表。
+     *
+     * @param courseId        课程 ID
+     * @param currentUserType 当前用户角色
+     * @return 成绩列表
+     */
+    public Result<List<Map<String, Object>>> listStudentScores(@PathVariable Long courseId,
+                                                               @RequestAttribute("userType") String currentUserType) {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            return Result.error("无权限查看课程成绩");
+        }
         List<Map<String, Object>> list = scoreService.listStudentScores(courseId);
         return Result.success(list);
     }
@@ -89,7 +133,21 @@ public class ScoreController {
      * GET /api/scores/export/{courseId}
      */
     @GetMapping("/export/{courseId}")
-    public void exportScores(@PathVariable Long courseId, HttpServletResponse response) throws Exception {
+    /**
+     * 导出课程成绩为 Excel，仅教师/管理员可用。
+     *
+     * @param courseId        课程 ID
+     * @param response        响应对象
+     * @param currentUserType 当前用户角色
+     * @throws Exception 写出文件异常
+     */
+    public void exportScores(@PathVariable Long courseId,
+                             HttpServletResponse response,
+                             @RequestAttribute("userType") String currentUserType) throws Exception {
+        if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
+            response.setStatus(403);
+            return;
+        }
         // 1. 查询数据
         List<Map<String, Object>> rawList = studentCourseMapper.selectStudentScoreList(courseId);
         if (!rawList.isEmpty()) {
@@ -138,9 +196,15 @@ public class ScoreController {
 
 
     // 获取某门课的学生名单
+
     @GetMapping("/course/{courseId}/students")
+    /**
+     * 获取课程的学生名单及成绩情况。
+     *
+     * @param courseId 课程 ID
+     * @return 学生成绩列表
+     */
     public Result<List<Map<String, Object>>> getCourseStudents(@PathVariable Long courseId) {
-        // 调用刚才写的带 JOIN 的查询
         List<Map<String, Object>> list = studentCourseMapper.selectStudentScoreList(courseId);
         return Result.success(list);
     }

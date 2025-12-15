@@ -15,11 +15,21 @@ public class UserImportListener implements ReadListener<UserImportDTO> {
 
     private UserService userService;
 
-    // 通过构造函数传入 UserService (因为监听器不由 Spring 管理)
+    /**
+     * 构造函数，初始化用户服务
+     * 
+     * @param userService 用户服务实例
+     */
     public UserImportListener(UserService userService) {
         this.userService = userService;
     }
 
+    /**
+     * 处理Excel导入的每一行数据
+     * 
+     * @param data Excel行数据
+     * @param context 分析上下文
+     */
     @Override
     public void invoke(UserImportDTO data, AnalysisContext context) {
         // 1. 数据清洗：如果账号为空，跳过
@@ -50,6 +60,11 @@ public class UserImportListener implements ReadListener<UserImportDTO> {
         }
     }
 
+    /**
+     * Excel导入完成后执行的操作
+     * 
+     * @param context 分析上下文
+     */
     @Override
     public void doAfterAllAnalysed(AnalysisContext context) {
         System.out.println("Excel 导入完成！");
