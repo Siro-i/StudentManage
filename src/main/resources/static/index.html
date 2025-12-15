@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生信息管理系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.4.4/dist/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', sans-serif; background-color: #f5f7fa; height: 100vh; }
+        .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%); }
+        .login-card { width: 400px; padding: 40px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .login-title { text-align: center; margin-bottom: 30px; font-weight: 600; color: #333; }
+        .main-container { height: 100vh; display: flex; }
+        .sidebar { width: 240px; background: #001529; color: white; display: flex; flex-direction: column; }
+        .sidebar-logo { height: 64px; line-height: 64px; text-align: center; font-size: 18px; font-weight: bold; background: #002140; }
+        .menu-item { padding: 16px 24px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.65); }
+        .menu-item:hover { color: white; background: rgba(255,255,255,0.08); }
+        .menu-item.active { color: white; background: #1890ff; }
+        .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header { height: 64px; background: white; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,21,41,0.08); z-index: 1; }
+        .work-area { flex: 1; padding: 24px; overflow-y: auto; }
+        .card { background: white; padding: 24px; border-radius: 4px; }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .course-card { margin-bottom: 20px; border: 1px solid #ebeef5; border-radius: 4px; transition: 0.3s; }
+        .course-card:hover { box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
+        .course-header { padding: 15px; border-bottom: 1px solid #ebeef5; font-weight: bold; background: #fafafa; }
+        .course-body { padding: 15px; font-size: 14px; line-height: 1.8; color: #606266; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div v-if="currentView === 'login'" class="login-container">
+        <div class="login-card">
+            <h2 class="login-title">教务管理系统</h2>
+            <el-form :model="loginForm" label-position="top">
+                <el-form-item label="用户名">
+                    <el-input v-model="loginForm.userName" placeholder="默认管理员: admin"></el-input>
+                </el-form-item>
+                <el-form-item label="密码">
+                    <el-input v-model="loginForm.userPwd" type="password" placeholder="默认: 123456" show-password @keyup.enter="handleLogin"></el-input>
+                </el-form-item>
+                <el-button type="primary" style="width: 100%; margin-top: 10px;" @click="handleLogin" :loading="loading">
+                    登 录
+                </el-button>
+            </el-form>
+        </div>
+    </div>
+
+    <div v-else class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-logo">学生信息管理</div>
+            <div v-for="menu in menus" :key="menu.path" class="menu-item" :class="{ active: currentPath === menu.path }" @click="handleNav(menu)">
+                <span>{{ menu.name }}</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="header">
+                <h3 style="margin:0">{{ pageTitle }}</h3>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span><el-tag effect="dark" size="small">{{ userRoleLabel }}</el-tag> {{ userInfo.userRealName || userInfo.userName }}</span>
+                    <el-button type="primary" link @click="pwdDialogVisible = true">修改密码</el-button>
+                    <el-button type="danger" link @click="handleLogout">退出</el-button>
+                </div>
+            </div>
+            <div class="work-area">
+
+                <div v-if="userInfo.userType === 'student'">
+                    <div v-if="currentPath === '/student/info'">
+                        <div class="card" style="max-width: 900px; margin: 0 auto;">
+                            <el-descriptions title="我的个人档案" :column="2" border>
+                                <template #extra>
+                                    <el-button type="primary" size="small" plain @click="openEditDialog">
+                                        <el-icon style="margin-right: 4px"><Edit /></el-icon> 修改联系方式
+                                    </el-button>
+                                </template>
+                                <el-descriptions-item label="姓名">{{ userInfo.userRealName || '-' }}</el-descriptions-item>
+                                <el-descriptions-item label="学号">{{ userInfo.userName }}</el-descriptions-item>
+                                <el-descriptions-item label="用户类型"><el-tag size="small">学生</el-tag></el-descriptions-item>
+                                <el-descriptions-item label="入学时间">{{ studentInfo.studentCreatetime || '-' }}</el-descriptions-item>
+                                <el-descriptions-item label="手机号">{{ userInfo.userPhone || '未登记' }}</el-descriptions-item>
+                                <el-descriptions-item label="邮箱">{{ userInfo.userEmail || '未登记' }}</el-descriptions-item>
+                                <el-descriptions-item label="所属学院">{{ studentInfo.studentCollege || '未录入' }}</el-descriptions-item>
+                                <el-descriptions-item label="年级">{{ studentInfo.studentGrade || '未录入' }}</el-descriptions-item>
+                                <el-descriptions-item label="班级">{{ studentInfo.studentClass || '未录入' }}</el-descriptions-item>
+                            </el-descriptions>
+                            <div style="margin-top: 20px; color: #909399; font-size: 13px; text-align: center;">
+                                <p>* 如需修改姓名、班级等关键学籍信息，请联系教务处管理员。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="currentPath === '/student/courses'">
+                        <div class="search-bar">
+                            <el-button type="primary" @click="loadCourses">刷新课程列表</el-button>
+                        </div>
+                        <el-row :gutter="20">
+                            <el-col :span="8" v-for="c in courseList" :key="c.courseId">
+                                <div class="course-card">
+                                    <div class="course-header">
+                                        {{ c.courseName }}
+                                        <el-tag size="small" style="float: right">{{ c.courseCredit }} 学分</el-tag>
+                                    </div>
+                                    <div class="course-body">
+                                        <p>教师: {{ c.teacherName || '暂无' }}</p>
+                                        <p>时间: <span style="color: #409EFF; font-weight: bold;">{{ c.courseTime || '待定' }}</span></p>
+                                        <p>地点: {{ c.courseRoom || '待定' }}</p>
+                                        <p>人数: {{ c.selectedNum }} / {{ c.maxNum }}</p>
+                                        <div style="margin-top: 15px;">
+                                            <el-button
+                                                    type="primary"
+                                                    size="small"
+                                                    :disabled="c.courseStatus === 0 || (c.selectedNum >= c.maxNum) || c.isSelected"
+                                                    @click="selectCourse(c.courseId)"
+                                            >
+                                                {{ c.isSelected ? '已选' : '我要选课' }}
+                                            </el-button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </el-col>
+                        </el-row>
+                        <el-empty v-if="courseList.length === 0" description="暂无课程"></el-empty>
+                    </div>
+
+                    <div v-if="currentPath === '/student/my-scores'">
+                        <div class="card">
+                            <div class="search-bar"><el-button type="primary" @click="loadMyScores">刷新成绩</el-button></div>
+                            <el-table :data="myScoreList" stripe style="width: 100%">
+                                <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                                <el-table-column prop="teacherName" label="任课教师"></el-table-column>
+                                <el-table-column prop="courseCredit" label="学分" width="100"></el-table-column>
+                                <el-table-column label="成绩" width="150">
+                                    <template #default="scope">
+                                        <el-tag v-if="scope.row.score != null" :type="scope.row.score >= 60 ? 'success' : 'danger'">{{ scope.row.score }}</el-tag>
+                                        <el-tag v-else type="info">待录入</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="120">
+                                    <template #default="scope">
+                                        <el-button
+                                                v-if="scope.row.score == null"
+                                                type="danger"
+                                                size="small"
+                                                plain
+                                                @click="handleDropCourse(scope.row)">
+                                            退选
+                                        </el-button>
+
+                                        <el-tag
+                                                v-else
+                                                type="info"
+                                                size="small">
+                                            已归档
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="userInfo.userType === 'teacher'">
+                    <div v-if="currentPath === '/teacher/info'">
+                        <div class="card" style="max-width: 900px; margin: 0 auto;">
+                            <el-descriptions title="教师个人档案" :column="2" border>
+                                <template #extra>
+                                    <el-button type="primary" size="small" plain @click="openTeacherEditDialog">
+                                        <el-icon style="margin-right: 4px"><Edit /></el-icon> 修改联系方式
+                                    </el-button>
+                                </template>
+                                <el-descriptions-item label="姓名">{{ userInfo.userRealName || '-' }}</el-descriptions-item>
+                                <el-descriptions-item label="工号">{{ userInfo.userName }}</el-descriptions-item>
+                                <el-descriptions-item label="用户类型"><el-tag size="small" type="success">教师</el-tag></el-descriptions-item>
+                                <el-descriptions-item label="入职时间">{{ teacherInfo.teacherCreatetime || '-' }}</el-descriptions-item>
+                                <el-descriptions-item label="手机号">{{ userInfo.userPhone || '未登记' }}</el-descriptions-item>
+                                <el-descriptions-item label="邮箱">{{ userInfo.userEmail || '未登记' }}</el-descriptions-item>
+                                <el-descriptions-item label="所属学院">{{ teacherInfo.teacherCollege || '未录入' }}</el-descriptions-item>
+                                <el-descriptions-item label="职称">{{ teacherInfo.teacherTitle || '未录入' }}</el-descriptions-item>
+                            </el-descriptions>
+                        </div>
+                    </div>
+
+                    <div v-if="currentPath === '/teacher/courses'">
+                        <div class="card">
+                            <div class="search-bar">
+                                <el-button type="success" @click="handleEditCourse(null)">发布新课程</el-button>
+                                <el-button @click="loadTeacherCourses">刷新</el-button>
+                            </div>
+                            <el-table :data="teacherCourseList" stripe style="width: 100%">
+                                <el-table-column prop="courseName" label="课程名称"></el-table-column>
+                                <el-table-column prop="courseTime" label="时间" width="150"></el-table-column>
+                                <el-table-column prop="courseRoom" label="地点" width="120"></el-table-column>
+                                <el-table-column prop="courseCredit" label="学分" width="80"></el-table-column>
+                                <el-table-column prop="selectedNum" label="已选" width="80"></el-table-column>
+                                <el-table-column label="状态" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="scope.row.courseStatus === 1 ? 'success' : 'info'">{{ scope.row.courseStatus === 1 ? '进行中' : '已结束' }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="220">
+                                    <template #default="scope">
+                                        <el-button type="primary" size="small" plain @click="handleEditCourse(scope.row)">编辑</el-button>
+                                        <el-button type="warning" size="small" plain @click="showStats(scope.row.courseId)">分析</el-button>
+                                        <el-button type="danger" size="small" plain @click="handleDeleteCourse(scope.row)">删除</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
+                    </div>
+
+                    <div v-if="currentPath === '/teacher/scores'">
+                        <div class="card">
+                            <div class="search-bar">
+                                <el-select v-model="selectedCourseId" placeholder="请选择课程" @change="loadStudentScores" style="width: 250px;">
+                                    <el-option v-for="c in teacherCourseList" :key="c.courseId" :label="c.courseName" :value="c.courseId"></el-option>
+                                </el-select>
+                                <el-button type="primary" @click="loadStudentScores" :disabled="!selectedCourseId">刷新名单</el-button>
+                                <el-button type="success" @click="handleExportScores" :disabled="!selectedCourseId" icon="Download">
+                                    导出Excel
+                                </el-button>
+                            </div>
+                            <el-alert v-if="!selectedCourseId" title="请先选择一门课程以录入成绩" type="info" :closable="false" style="margin-bottom:20px;"></el-alert>
+                            <el-table v-else :data="scoreList" stripe style="width: 100%">
+
+                                <el-table-column prop="studentName" label="姓名" width="120">
+                                    <template #default="scope">
+                                        {{ scope.row.studentName || '未录入' }}
+                                    </template>
+                                </el-table-column>
+
+                                <el-table-column prop="studentNumber" label="学号" width="150"></el-table-column>
+
+                                <el-table-column prop="studentClass" label="班级"></el-table-column>
+
+                                <el-table-column label="当前成绩" width="200">
+                                    <template #default="scope">
+                                        <el-input-number
+                                                v-model="scope.row.score"
+                                                :min="0" :max="100"
+                                                size="small"
+                                                :controls="false"
+                                                placeholder="输入0-100"
+                                        ></el-input-number>
+                                    </template>
+                                </el-table-column>
+
+                                <el-table-column label="操作" width="120">
+                                    <template #default="scope">
+                                        <el-button type="primary" size="small" @click="submitScore(scope.row)">保存</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="userInfo.userType === 'admin'">
+                    <div v-if="currentPath === '/admin/dashboard'">
+                        <el-row :gutter="20">
+                            <el-col :span="12">
+                                <div class="card">
+                                    <h3 style="margin-bottom: 20px;">人员构成分析</h3>
+                                    <div id="userChart" style="height: 350px;"></div>
+                                </div>
+                            </el-col>
+                            <el-col :span="12">
+                                <div class="card">
+                                    <h3 style="margin-bottom: 20px;">热门课程 Top 5</h3>
+                                    <div id="courseChart" style="height: 350px;"></div>
+                                </div>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <div v-if="currentPath === '/admin/users'">
+                        <div class="card" style="margin-bottom: 15px;">
+                            <el-form :inline="true" :model="searchForm" class="demo-form-inline">
+                                <el-form-item label="角色">
+                                    <el-select v-model="searchForm.userType" placeholder="全部角色" style="width: 120px;" clearable>
+                                        <el-option label="管理员" value="admin"></el-option>
+                                        <el-option label="教师" value="teacher"></el-option>
+                                        <el-option label="学生" value="student"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                                <el-form-item label="姓名">
+                                    <el-input v-model="searchForm.userRealName" placeholder="输入姓名" clearable></el-input>
+                                </el-form-item>
+                                <el-form-item label="手机号">
+                                    <el-input v-model="searchForm.userPhone" placeholder="输入手机号" clearable></el-input>
+                                </el-form-item>
+                                <el-form-item>
+                                    <el-button type="primary" @click="handleSearch">
+                                        <el-icon style="margin-right: 4px"><Search /></el-icon>查询
+                                    </el-button>
+                                    <el-button @click="resetSearch">
+                                        <el-icon style="margin-right: 4px"><Refresh /></el-icon>重置
+                                    </el-button>
+                                </el-form-item>
+                            </el-form>
+                        </div>
+
+                        <div class="card">
+                            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                                <el-button type="success" @click="handleEditUser(null)">
+                                    <el-icon style="margin-right: 4px"><Plus /></el-icon>新增用户
+                                </el-button>
+
+                                <el-upload
+                                        action="/api/users/import"
+                                        :headers="uploadHeaders"
+                                        :show-file-list="false"
+                                        :on-success="handleImportSuccess"
+                                        :on-error="handleImportError"
+                                        accept=".xlsx, .xls"
+                                >
+                                    <el-button type="primary" plain>
+                                        <el-icon style="margin-right: 4px"><Upload /></el-icon>批量导入
+                                    </el-button>
+                                </el-upload>
+
+                                <el-button link type="primary" @click="downloadTemplate">下载模板</el-button>
+                            </div>
+
+                            <el-table :data="userList" stripe>
+                                <el-table-column prop="userId" label="ID" width="60"></el-table-column>
+                                <el-table-column prop="userName" label="账号" width="120"></el-table-column>
+                                <el-table-column prop="userRealName" label="姓名" width="100"></el-table-column>
+                                <el-table-column prop="userType" label="角色" width="100">
+                                    <template #default="scope">
+                                        <el-tag v-if="scope.row.userType==='admin'" type="warning">管理员</el-tag>
+                                        <el-tag v-if="scope.row.userType==='teacher'" type="success">教师</el-tag>
+                                        <el-tag v-if="scope.row.userType==='student'">学生</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="userPhone" label="手机号" width="120"></el-table-column>
+                                <el-table-column prop="userEmail" label="邮箱" width="180"></el-table-column>
+                                <el-table-column prop="userCreatetime" label="注册时间"></el-table-column>
+                                <el-table-column label="操作" width="150">
+                                    <template #default="scope">
+                                        <el-button type="primary" size="small" plain @click="handleEditUser(scope.row)">编辑</el-button>
+                                        <el-button v-if="scope.row.userName !== 'admin'" type="danger" size="small" plain @click="handleDeleteUser(scope.row)">删除</el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+
+                            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                                <el-pagination
+                                        background
+                                        layout="total, prev, pager, next"
+                                        :total="userPage.total"
+                                        :page-size="userPage.size"
+                                        v-model:current-page="userPage.current"
+                                        @current-change="handlePageChange"
+                                ></el-pagination>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <el-dialog v-model="addCourseDialog" :title="isEditCourse ? '编辑课程' : '发布新课程'" width="500px">
+        <el-form :model="courseForm" label-width="80px">
+            <el-form-item label="课程名称"><el-input v-model="courseForm.courseName"></el-input></el-form-item>
+            <el-form-item label="学分"><el-input-number v-model="courseForm.courseCredit" :min="1" :max="10"></el-input-number></el-form-item>
+            <el-form-item label="最大人数"><el-input-number v-model="courseForm.maxNum" :min="10" :max="200"></el-input-number></el-form-item>
+
+            <el-form-item label="上课时间" prop="courseTime">
+                <el-select v-model="courseForm.courseTime" placeholder="请选择时间段" style="width: 100%">
+                    <el-option v-for="item in timeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <el-form-item label="上课地点" prop="courseRoom">
+                <el-select v-model="courseForm.courseRoom" placeholder="请选择教室" style="width: 100%">
+                    <el-option-group v-for="group in roomOptions" :key="group.label" :label="group.label">
+                        <el-option v-for="item in group.options" :key="item.value" :label="item.label" :value="item.value">
+                            <span style="float: left">{{ item.label }}</span>
+                            <span style="float: right; color: #8492a6; font-size: 13px">{{ item.value }}</span>
+                        </el-option>
+                    </el-option-group>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <template #footer>
+            <span class="dialog-footer">
+                <el-button @click="addCourseDialog = false">取消</el-button>
+                <el-button type="primary" @click="handleSubmitCourse">确 定</el-button>
+            </span>
+        </template>
+    </el-dialog>
+
+    <el-dialog v-model="editProfileDialog" title="修改联系方式" width="400px">
+        <el-form :model="studentInfoForm" label-width="70px">
+            <el-form-item label="手机号"><el-input v-model="studentInfoForm.userPhone"></el-input></el-form-item>
+            <el-form-item label="邮箱"><el-input v-model="studentInfoForm.userEmail"></el-input></el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="editProfileDialog = false">取消</el-button>
+            <el-button type="primary" @click="handleUpdateProfile">保存</el-button>
+        </template>
+    </el-dialog>
+
+    <el-dialog v-model="editTeacherDialog" title="修改联系方式" width="400px">
+        <el-form :model="teacherForm" label-width="70px">
+            <el-form-item label="手机号"><el-input v-model="teacherForm.userPhone"></el-input></el-form-item>
+            <el-form-item label="邮箱"><el-input v-model="teacherForm.userEmail"></el-input></el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="editTeacherDialog = false">取消</el-button>
+            <el-button type="primary" @click="handleUpdateTeacher">保存</el-button>
+        </template>
+    </el-dialog>
+
+    <el-dialog v-model="addUserDialog" :title="isEditUser ? '编辑用户' : '添加新用户'" width="500px">
+        <el-form :model="userForm" label-width="80px">
+            <el-form-item label="登录账号"><el-input v-model="userForm.userName" :disabled="isEditUser"></el-input></el-form-item>
+            <el-form-item label="真实姓名"><el-input v-model="userForm.userRealName"></el-input></el-form-item>
+            <el-form-item label="手机号"><el-input v-model="userForm.userPhone"></el-input></el-form-item>
+            <el-form-item label="邮箱"><el-input v-model="userForm.userEmail"></el-input></el-form-item>
+            <el-form-item label="密码" v-if="isEditUser"><el-input v-model="userForm.userPwd" placeholder="留空则不修改"></el-input></el-form-item>
+            <el-form-item label="密码" v-else><el-input v-model="userForm.userPwd" placeholder="默认123456"></el-input></el-form-item>
+            <el-form-item label="角色类型">
+                <el-select v-model="userForm.userType" :disabled="isEditUser">
+                    <el-option label="学生" value="student"></el-option>
+                    <el-option label="教师" value="teacher"></el-option>
+                    <el-option label="管理员" value="admin"></el-option>
+                </el-select>
+            </el-form-item>
+
+            <div v-if="userForm.userType === 'student'" style="background: #f5f7fa; padding: 10px; border-radius: 4px;">
+                <p style="font-size: 12px; color: #909399; margin-bottom: 10px;">—— 学籍信息 ——</p>
+                <el-form-item label="所属学院"><el-input v-model="userForm.studentCollege"></el-input></el-form-item>
+                <el-form-item label="班级"><el-input v-model="userForm.studentClass"></el-input></el-form-item>
+                <el-form-item label="年级"><el-input v-model="userForm.studentGrade"></el-input></el-form-item>
+            </div>
+            <div v-if="userForm.userType === 'teacher'" style="background: #fdf6ec; padding: 10px; border-radius: 4px;">
+                <p style="font-size: 12px; color: #E6A23C; margin-bottom: 10px;">—— 教师档案信息 ——</p>
+                <el-form-item label="所属学院"><el-input v-model="userForm.teacherCollege"></el-input></el-form-item>
+                <el-form-item label="职称"><el-input v-model="userForm.teacherTitle" placeholder="如：教授/讲师"></el-input></el-form-item>
+            </div>
+        </el-form>
+        <template #footer>
+            <el-button @click="addUserDialog = false">取消</el-button>
+            <el-button type="primary" @click="handleSubmitUser">确 定</el-button>
+        </template>
+    </el-dialog>
+
+    <el-dialog v-model="pwdDialogVisible" title="修改密码" width="400px">
+        <el-form :model="pwdForm">
+            <el-form-item label="新密码"><el-input v-model="pwdForm.newPwd" type="password" show-password></el-input></el-form-item>
+        </el-form>
+        <template #footer>
+            <el-button @click="pwdDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="handleUpdatePwd">确 定</el-button>
+        </template>
+    </el-dialog>
+
+    <el-dialog v-model="statsDialogVisible" title="课程成绩分析" width="400px">
+        <div v-if="currentStats" style="text-align: center;">
+            <el-row :gutter="20" style="margin-bottom: 20px;">
+                <el-col :span="12"><el-statistic title="平均分" :value="currentStats.avgScore" precision="1"></el-statistic></el-col>
+                <el-col :span="12"><el-statistic title="最高分" :value="currentStats.maxScore"></el-statistic></el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="12"><el-statistic title="最低分" :value="currentStats.minScore"></el-statistic></el-col>
+                <el-col :span="12"><el-statistic title="及格人数" :value="currentStats.passCount"></el-statistic></el-col>
+            </el-row>
+            <el-divider></el-divider>
+            <p style="color: #909399; font-size: 12px;">总选课人数: {{ currentStats.totalCount }}</p>
+        </div>
+        <div v-else v-loading="true" style="height: 100px;"></div>
+    </el-dialog>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.4/dist/index.full.min.js"></script>
+<script src="https://unpkg.com/@element-plus/icons-vue"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+    const { ElMessage, ElMessageBox } = ElementPlus;
+    const app = createApp({
+        setup() {
+            // ================= 1. 核心封装 =================
+            const token = ref(localStorage.getItem('token') || '');
+
+            // 上传Header (Computed 解决响应性问题)
+            const uploadHeaders = computed(() => ({
+                'Authorization': token.value
+            }));
+
+            const handleLogout = () => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userInfo');
+                location.reload();
+            };
+
+            const request = async (url, options = {}) => {
+                if (!options.headers) options.headers = {};
+                if (token.value) options.headers['token'] = token.value;
+                if (!options.headers['Content-Type']) options.headers['Content-Type'] = 'application/json';
+
+                try {
+                    const res = await fetch(url, options);
+                    if (res.status === 401) {
+                        ElMessage.error('登录已过期，请重新登录');
+                        handleLogout();
+                        return { code: 401 };
+                    }
+                    return await res.json();
+                } catch(e) {
+                    ElMessage.error('网络请求异常');
+                    return { code: 500 };
+                }
+            };
+
+            // ================= 2. 状态 =================
+            const currentView = ref('login');
+            const loading = ref(false);
+            const userInfo = ref({});
+            const loginForm = ref({ userName: 'admin', userPwd: '123456' });
+
+            const handleLogin = async () => {
+                loading.value = true;
+                try {
+                    const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(loginForm.value) });
+                    const result = await res.json();
+                    if (result.code === 200) {
+                        ElMessage.success('登录成功');
+                        const data = result.data;
+                        token.value = data.token;
+                        userInfo.value = data.userInfo;
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('userInfo', JSON.stringify(data.userInfo));
+                        currentView.value = 'main';
+                        initNavigation(userInfo.value.userType);
+                    } else ElMessage.error(result.msg || '账号或密码错误');
+                } catch (e) { ElMessage.error('连接服务器失败'); } finally { loading.value = false; }
+            };
+
+            const initNavigation = (type) => {
+                if(type === 'admin') handleNav({path: '/admin/dashboard', name:'系统概览'});
+                else if(type === 'teacher') handleNav({path: '/teacher/courses', name:'我的课程'});
+                else if(type === 'student') handleNav({path: '/student/courses', name:'选课中心'});
+            }
+
+            // ================= 3. 导航 =================
+            const currentPath = ref('');
+            const pageTitle = ref('');
+            const menus = computed(() => {
+                const type = userInfo.value.userType;
+                if (type === 'admin') return [{ path: '/admin/users', name: '用户管理' },{ path: '/admin/dashboard', name: '系统概览' }];
+                if (type === 'teacher') return [{ path: '/teacher/info', name: '个人信息' },{ path: '/teacher/courses', name: '我的课程' }, { path: '/teacher/scores', name: '录入成绩' }];
+                if (type === 'student') return [{ path: '/student/info', name: '个人信息' }, { path: '/student/courses', name: '选课中心' }, { path: '/student/my-scores', name: '我的成绩' }];
+                return [];
+            });
+            const handleNav = (menu) => {
+                currentPath.value = menu.path;
+                pageTitle.value = menu.name;
+                if (menu.path === '/student/courses') loadCourses();
+                if (menu.path === '/student/my-scores') loadMyScores();
+                if (menu.path === '/student/info') loadStudentInfo();
+                if (menu.path === '/teacher/courses') loadTeacherCourses();
+                if (menu.path === '/teacher/info') loadTeacherInfo();
+                if (menu.path === '/admin/users') loadUsers();
+                if (menu.path === '/admin/dashboard') loadDashboard();
+            };
+
+            // ================= 4. 业务模块 =================
+
+            // --- 静态数据 (时间/教室) ---
+            const timeOptions = [];
+            ['周一', '周二', '周三', '周四', '周五'].forEach(w => {
+                ['1-2节', '3-4节', '5-6节', '7-8节'].forEach(s => {
+                    timeOptions.push({ label: `${w} ${s}`, value: `${w} ${s}` });
+                });
+            });
+            const roomOptions = [
+                { label: '第一教学楼', options: [{ value: '一教101', label: '101室' }, { value: '一教201', label: '201室' }] },
+                { label: '实验楼', options: [{ value: '实验楼A101', label: 'A101 机房' }] },
+                { label: '第二教学楼', options: [{ value: '二教303', label: '303室' }] }
+            ];
+
+            // --- 学生逻辑 ---
+            const courseList = ref([]);
+            const loadCourses = async () => {
+                const res = await request('/api/courses?courseStatus=1');
+                if(res.code === 200) courseList.value = res.data;
+            };
+            const selectCourse = async (courseId) => {
+                const res = await request(`/api/courses/${courseId}/select?studentId=${userInfo.value.userId}`, { method: 'POST' });
+                if(res.code === 200) { ElMessage.success('选课成功'); loadCourses(); } else ElMessage.error(res.msg);
+            };
+            const myScoreList = ref([]);
+            const loadMyScores = async () => {
+                const res = await request(`/api/scores/student/${userInfo.value.userId}`);
+                if(res.code === 200) myScoreList.value = res.data;
+            };
+            const handleDropCourse = (row) => {
+                ElMessageBox.confirm(`确定退选 "${row.courseName}" 吗？`, '提示', { type: 'warning' })
+                    .then(async () => {
+                        const res = await request(`/api/courses/${row.courseId}/drop?studentId=${userInfo.value.userId}`, { method: 'POST' });
+                        if(res.code === 200) { ElMessage.success('退选成功'); loadMyScores(); } else ElMessage.error(res.msg);
+                    }).catch(()=>{});
+            };
+
+            // 学生个人信息
+            const studentInfo = ref({});
+            const editProfileDialog = ref(false);
+            const studentInfoForm = ref({ userPhone: '', userEmail: '' });
+            const openEditDialog = () => {
+                studentInfoForm.value.userPhone = userInfo.value.userPhone || '';
+                studentInfoForm.value.userEmail = userInfo.value.userEmail || '';
+                editProfileDialog.value = true;
+            };
+            const loadStudentInfo = async () => {
+                const res = await request(`/api/student/info/${userInfo.value.userId}`);
+                if (res.code === 200) studentInfo.value = res.data;
+            };
+            const handleUpdateProfile = async () => {
+                const payload = { userPhone: studentInfoForm.value.userPhone, userEmail: studentInfoForm.value.userEmail };
+                const res = await request('/api/student/profile', { method: 'PUT', body: JSON.stringify(payload) });
+                if (res.code === 200) {
+                    ElMessage.success('修改成功');
+                    userInfo.value.userPhone = payload.userPhone;
+                    userInfo.value.userEmail = payload.userEmail;
+                    localStorage.setItem('userInfo', JSON.stringify(userInfo.value));
+                    editProfileDialog.value = false;
+                } else ElMessage.error(res.msg);
+            };
+
+            // --- 教师逻辑 ---
+            const teacherCourseList = ref([]);
+            const addCourseDialog = ref(false);
+            const isEditCourse = ref(false);
+            const courseForm = ref({ courseName: '', courseCredit: 3, maxNum: 50 });
+
+            const loadTeacherCourses = async () => {
+                const res = await request(`/api/courses?teacherId=${userInfo.value.userId}`);
+                if(res.code === 200) teacherCourseList.value = res.data;
+            };
+            const handleEditCourse = (row) => {
+                isEditCourse.value = !!row;
+                if(row) courseForm.value = { ...row };
+                else courseForm.value = { courseName: '', courseCredit: 3, maxNum: 50 ,courseTime: '', courseRoom: ''};
+                addCourseDialog.value = true;
+            };
+            const handleDeleteCourse = (row) => {
+                ElMessageBox.confirm(`确定删除 "${row.courseName}" 吗？`, '警告', { type: 'error' })
+                    .then(async () => {
+                        const res = await request(`/api/courses/${row.courseId}`, { method: 'DELETE' });
+                        if(res.code === 200) { ElMessage.success('删除成功'); loadTeacherCourses(); } else ElMessage.error(res.msg);
+                    }).catch(()=>{});
+            };
+            const handleSubmitCourse = async () => {
+                const payload = { ...courseForm.value, teacherId: userInfo.value.userId, courseStatus: 1 };
+                const method = isEditCourse.value ? 'PUT' : 'POST';
+                const res = await request('/api/courses', { method: method, body: JSON.stringify(payload) });
+                if(res.code === 200) { ElMessage.success('操作成功'); addCourseDialog.value = false; loadTeacherCourses(); } else ElMessage.error(res.msg);
+            };
+
+            // 教师信息
+            const teacherInfo = ref({});
+            const editTeacherDialog = ref(false);
+            const teacherForm = ref({ userPhone: '', userEmail: '' });
+            const loadTeacherInfo = async () => {
+                const res = await request(`/api/teacher/info/${userInfo.value.userId}`);
+                if (res.code === 200) teacherInfo.value = res.data || {};
+            };
+            const openTeacherEditDialog = () => {
+                teacherForm.value.userPhone = userInfo.value.userPhone || '';
+                teacherForm.value.userEmail = userInfo.value.userEmail || '';
+                editTeacherDialog.value = true;
+            };
+            const handleUpdateTeacher = async () => {
+                const payload = { userPhone: teacherForm.value.userPhone, userEmail: teacherForm.value.userEmail };
+                const res = await request('/api/teacher/profile', { method: 'PUT', body: JSON.stringify(payload) });
+                if (res.code === 200) {
+                    ElMessage.success('修改成功');
+                    userInfo.value.userPhone = payload.userPhone;
+                    userInfo.value.userEmail = payload.userEmail;
+                    localStorage.setItem('userInfo', JSON.stringify(userInfo.value));
+                    editTeacherDialog.value = false;
+                } else ElMessage.error(res.msg);
+            };
+
+            // 成绩录入
+            const selectedCourseId = ref(null);
+            const scoreList = ref([]);
+            const loadStudentScores = async () => {
+                if(!selectedCourseId.value) return;
+                const res = await request(`/api/scores/course/${selectedCourseId.value}`);
+                if(res.code === 200) scoreList.value = res.data;
+            };
+            const submitScore = async (row) => {
+                const payload = {
+                    teacherId: userInfo.value.userId,
+                    studentId: row.studentId,
+                    courseId: selectedCourseId.value,
+                    score: row.score
+                };
+
+                const res = await request('/api/scores/entry', { method: 'POST', body: JSON.stringify(payload) });
+                if(res.code === 200) ElMessage.success('保存成功');
+                else ElMessage.error(res.msg);
+            };
+
+            // 分析与导出
+            const statsDialogVisible = ref(false);
+            const currentStats = ref(null);
+            const showStats = async (courseId) => {
+                currentStats.value = null; statsDialogVisible.value = true;
+                const res = await request(`/api/scores/statistics/${courseId}`);
+                if(res.code === 200) currentStats.value = res.data;
+            };
+            const handleExportScores = async () => {
+                if (!selectedCourseId.value) return;
+                try {
+                    ElMessage.info('正在生成Excel...');
+                    const res = await fetch(`/api/scores/export/${selectedCourseId.value}`, { method: 'GET', headers: { 'token': token.value } });
+                    if (res.status !== 200) { ElMessage.error('导出失败'); return; }
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `成绩单_${selectedCourseId.value}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (e) { ElMessage.error('导出异常'); }
+            };
+
+            // --- 管理员逻辑 ---
+            const userList = ref([]);
+            const addUserDialog = ref(false);
+            const isEditUser = ref(false);
+            const userForm = ref({});
+            const userPage = ref({ current: 1, size: 5, total: 0 }); // 默认每页5条
+            const searchForm = ref({ userType: '', userRealName: '', userPhone: '' });
+
+            const loadUsers = async () => {
+                let params = `pageNum=${userPage.value.current}&pageSize=${userPage.value.size}`;
+                if (searchForm.value.userType) params += `&userType=${searchForm.value.userType}`;
+                if (searchForm.value.userRealName) params += `&userRealName=${searchForm.value.userRealName}`;
+                if (searchForm.value.userPhone) params += `&userPhone=${searchForm.value.userPhone}`;
+                const res = await request(`/api/users?${params}`);
+                if(res.code === 200) {
+                    userList.value = res.data.list;
+                    userPage.value.total = res.data.total;
+                }
+            };
+            const handleSearch = () => { userPage.value.current = 1; loadUsers(); };
+            const resetSearch = () => { searchForm.value = { userType: '', userRealName: '', userPhone: '' }; handleSearch(); };
+            const handlePageChange = (val) => { userPage.value.current = val; loadUsers(); };
+
+            const handleEditUser = async (row) => {
+                isEditUser.value = !!row;
+                if(row) {
+                    userForm.value = { ...row, userPwd: '' };
+                    // 获取扩展信息
+                    if (row.userType === 'student') {
+                        const res = await request(`/api/student/info/${row.userId}`);
+                        if (res.code === 200 && res.data) Object.assign(userForm.value, res.data);
+                    } else if (row.userType === 'teacher') {
+                        const res = await request(`/api/teacher/info/${row.userId}`);
+                        if (res.code === 200 && res.data) Object.assign(userForm.value, res.data);
+                    }
+                } else {
+                    userForm.value = { userName: '', userRealName: '', userPwd: '', userType: 'student' };
+                }
+                addUserDialog.value = true;
+            };
+            const handleSubmitUser = async () => {
+                const method = isEditUser.value ? 'PUT' : 'POST';
+                const res = await request('/api/users', { method: method, body: JSON.stringify(userForm.value) });
+                if(res.code === 200) { ElMessage.success('操作成功'); addUserDialog.value = false; loadUsers(); } else ElMessage.error(res.msg);
+            };
+            const handleDeleteUser = (row) => {
+                ElMessageBox.confirm(`确定删除 "${row.userRealName}" 吗？`, '警告', { type: 'warning' })
+                    .then(async () => {
+                        const res = await request(`/api/users/${row.userId}`, { method: 'DELETE' });
+                        if(res.code === 200) { ElMessage.success('删除成功'); loadUsers(); } else ElMessage.error(res.msg);
+                    }).catch(()=>{});
+            };
+
+            // 导入导出
+            const handleImportSuccess = (res) => {
+                if(res.code === 200) { ElMessage.success('导入成功'); loadUsers(); } else ElMessage.error(res.msg || '导入失败');
+            };
+            const handleImportError = () => ElMessage.error('上传失败');
+            const downloadTemplate = async () => {
+                try {
+                    const res = await fetch('/api/users/import/template');
+                    if (res.status !== 200) { ElMessage.error(`下载失败: ${res.status}`); return; }
+                    const contentType = res.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const json = await res.json();
+                        ElMessage.error('失败: ' + json.msg);
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = '导入模板.xlsx';
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                } catch (e) { ElMessage.error('下载出错'); }
+            };
+
+            // --- 仪表盘 (修复ECharts初始化) ---
+            let myUserChart = null;
+            let myCourseChart = null;
+
+            const loadDashboard = async () => {
+                const res = await request('/api/stats/dashboard');
+                if (res.code !== 200) return;
+                nextTick(() => {
+                    initUserChart(res.data.userStats);
+                    initCourseChart(res.data.courseStats);
+                });
+            };
+            const initUserChart = (data) => {
+                const dom = document.getElementById('userChart');
+                if(!dom) return;
+                if(myUserChart) myUserChart.dispose();
+                myUserChart = echarts.init(dom);
+                myUserChart.setOption({
+                    tooltip: { trigger: 'item' },
+                    legend: { top: '5%', left: 'center' },
+                    series: [{
+                        type: 'pie', radius: ['40%', '70%'],
+                        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+                        label: { show: false, position: 'center' },
+                        data: [
+                            { value: data.student, name: '学生' },
+                            { value: data.teacher, name: '教师' },
+                            { value: data.admin, name: '管理员' }
+                        ]
+                    }]
+                });
+                window.onresize = () => myUserChart.resize();
+            };
+            const initCourseChart = (list) => {
+                const dom = document.getElementById('courseChart');
+                if(!dom) return;
+                if(myCourseChart) myCourseChart.dispose();
+                myCourseChart = echarts.init(dom);
+                myCourseChart.setOption({
+                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                    xAxis: { type: 'category', data: list.map(i => i.name), axisLabel: { interval: 0, rotate: 30 } },
+                    yAxis: { type: 'value' },
+                    series: [{
+                        data: list.map(i => i.count),
+                        type: 'bar', showBackground: true, itemStyle: { color: '#409EFF' }
+                    }]
+                });
+                window.onresize = () => myCourseChart.resize();
+            };
+
+            // --- 密码与初始化 ---
+            const pwdDialogVisible = ref(false);
+            const pwdForm = ref({ newPwd: '' });
+            const handleUpdatePwd = async () => {
+                const res = await request('/api/users/password', { method: 'POST', body: JSON.stringify({ userId: userInfo.value.userId, newPwd: pwdForm.value.newPwd }) });
+                if(res.code === 200) { ElMessage.success('修改成功，请重新登录'); pwdDialogVisible.value = false; setTimeout(()=>handleLogout(),1000); }
+                else ElMessage.error(res.msg);
+            };
+
+            const userRoleLabel = computed(() => ({admin:'管理员', teacher:'教师', student:'学生'}[userInfo.value.userType] || '未知'));
+
+            const initSession = () => {
+                const storedToken = localStorage.getItem('token');
+                const storedUserInfo = localStorage.getItem('userInfo');
+                if (storedToken && storedUserInfo) {
+                    token.value = storedToken;
+                    userInfo.value = JSON.parse(storedUserInfo);
+                    currentView.value = 'main';
+                    initNavigation(userInfo.value.userType);
+                }
+            };
+            initSession();
+
+            return {
+                currentView, loading, loginForm, handleLogin, handleLogout,
+                userInfo, userRoleLabel, menus, currentPath, pageTitle, handleNav,
+                courseList, loadCourses, selectCourse, myScoreList, loadMyScores, handleDropCourse,
+                studentInfo, loadStudentInfo, editProfileDialog, studentInfoForm, openEditDialog, handleUpdateProfile,
+                teacherCourseList, loadTeacherCourses, addCourseDialog, isEditCourse, handleEditCourse, handleDeleteCourse, courseForm, handleSubmitCourse, selectedCourseId, scoreList, loadStudentScores, submitScore, statsDialogVisible, currentStats, showStats, handleExportScores,
+                userList, loadUsers, addUserDialog, isEditUser, handleEditUser, handleDeleteUser, userForm, handleSubmitUser,
+                pwdDialogVisible, pwdForm, handleUpdatePwd, teacherInfo, loadTeacherInfo, userPage, handlePageChange, editTeacherDialog, teacherForm, openTeacherEditDialog, handleUpdateTeacher,
+                searchForm, handleSearch, resetSearch, timeOptions, roomOptions, uploadHeaders, handleImportSuccess, handleImportError, downloadTemplate,
+            };
+        }
+    });
+
+    for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+        app.component(key, component)
+    }
+
+    app.use(ElementPlus).mount('#app');
+</script>
+</body>
+</html>

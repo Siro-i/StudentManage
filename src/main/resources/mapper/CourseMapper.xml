@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.school.system.mapper.CourseMapper">
+
+    <resultMap id="BaseResultMap" type="com.school.system.entity.Course">
+        <id column="course_id" property="courseId" />
+        <result column="course_name" property="courseName" />
+        <result column="teacher_id" property="teacherId" />
+        <result column="course_credit" property="courseCredit" />
+        <result column="course_status" property="courseStatus" />
+        <result column="max_num" property="maxNum" />
+        <result column="selected_num" property="selectedNum" />
+    </resultMap>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        c.*,
+        u.user_real_name as teacherName  FROM course_table c
+        LEFT JOIN user_table u ON c.teacher_id = u.user_id
+        <where>
+            <if test="courseName != null and courseName != ''">
+                AND c.course_name LIKE concat('%', #{courseName}, '%')
+            </if>
+            <if test="teacherId != null">
+                AND c.teacher_id = #{teacherId}
+            </if>
+            <if test="courseStatus != null">
+                AND c.course_status = #{courseStatus}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM course_table WHERE course_id = #{courseId}
+    </select>
+
+    <update id="incrementSelectedNum">
+        UPDATE course_table
+        SET selected_num = selected_num + 1
+        WHERE course_id = #{courseId}
+          AND selected_num &lt; max_num
+    </update>
+
+    <update id="decrementSelectedNum">
+        UPDATE course_table
+        SET selected_num = selected_num - 1
+        WHERE course_id = #{courseId}
+          AND selected_num > 0
+    </update>
+    <insert id="insert" useGeneratedKeys="true" keyProperty="courseId">
+        INSERT INTO course_table
+        (course_name, course_credit, max_num, selected_num, course_status, teacher_id, course_time, course_room)
+        VALUES
+            (#{courseName}, #{courseCredit}, #{maxNum}, 0, #{courseStatus}, #{teacherId}, #{courseTime}, #{courseRoom})
+    </insert>
+    <delete id="deleteById">
+        DELETE FROM course_table WHERE course_id = #{courseId}
+    </delete>
+    <update id="update">
+        UPDATE course_table
+        <set>
+            <if test="courseName != null">course_name = #{courseName},</if>
+            <if test="courseCredit != null">course_credit = #{courseCredit},</if>
+            <if test="maxNum != null">max_num = #{maxNum},</if>
+            <if test="courseStatus != null">course_status = #{courseStatus},</if>
+
+            <if test="courseTime != null">course_time = #{courseTime},</if>
+            <if test="courseRoom != null">course_room = #{courseRoom},</if>
+            <if test="selectedNum != null">selected_num = #{selectedNum},</if>
+        </set>
+        WHERE course_id = #{courseId}
+    </update>
+    <select id="selectByStudentId" resultType="com.school.system.entity.Course">
+        SELECT c.* FROM course_table c
+                            LEFT JOIN student_course_table sc ON c.course_id = sc.course_id
+        WHERE sc.student_id = #{studentId}
+    </select>
+    <select id="selectByTimeAndRoom" resultType="com.school.system.entity.Course">
+        SELECT * FROM course_table
+        WHERE course_time = #{courseTime}
+          AND course_room = #{courseRoom}
+          AND course_status = 1  </select>
+</mapper>

@@ -1,0 +1,26 @@
+package com.school.system.mapper;
+
+import com.school.system.entity.User;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+
+@Mapper
+public interface UserMapper {
+    // 根据用户名查找（登录用）
+    User findByUsername(@Param("username") String username);
+
+    // 根据ID查找
+    User selectById(@Param("userId") Long userId);
+
+    // 插入新用户
+    int insert(User user);
+
+    // 更新用户信息（密码、修改时间等）
+    int updateById(User user);
+
+    List<User> selectList(User condition);
+
+    int deleteById(@Param("userId") Long userId);
+}
