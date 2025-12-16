@@ -13,8 +13,8 @@ public interface TeacherMapper {
 
     List<Teacher> selectList(Teacher condition);
 
-    int updateById(Teacher teacher);
+    void updateById(Teacher teacher);
 
 
-    int deleteByUserId(@Param("userId") Long userId);
+    void deleteByUserId(@Param("userId") Long userId);
 }

@@ -45,7 +45,6 @@ public class ScoreController {
      * @return 操作结果
      */
     public Result<Void> setScore(@RequestBody ScoreEntryRequest request,
-                                 @RequestAttribute("userId") Long currentUserId,
                                  @RequestAttribute("userType") String currentUserType) {
         if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
             return Result.error("无权限录入成绩");
@@ -126,7 +125,7 @@ public class ScoreController {
      */
     public void exportScores(@PathVariable Long courseId,
                              HttpServletResponse response,
-                             @RequestAttribute("userType") String currentUserType) throws Exception {
+                             @RequestAttribute("userType") String currentUserType)  {
         if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
             response.setStatus(403);
             return;
@@ -134,7 +133,7 @@ public class ScoreController {
         // 1. 查询数据
         List<Map<String, Object>> rawList = studentCourseMapper.selectStudentScoreList(courseId);
         if (!rawList.isEmpty()) {
-            System.out.println("DEBUG - 查到的第一条数据: " + rawList.get(0));
+            System.out.println("DEBUG - 查到的第一条数据: " + rawList.getFirst());
         } else {
             System.out.println("DEBUG - 该课程没有学生选课数据");
         }
@@ -173,7 +172,7 @@ public class ScoreController {
                     .sheet("成绩表")
                     .doWrite(exportList);
         } catch (Exception e) {
-            e.printStackTrace(); 
+            e.printStackTrace();
         }
     }
 

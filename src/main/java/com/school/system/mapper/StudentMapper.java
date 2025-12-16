@@ -9,8 +9,6 @@ import java.util.List;
 public interface StudentMapper {
     int insert(Student student);
 
-    // 根据主键查找
-    Student selectById(@Param("studentId") Long studentId);
 
     // 根据账号ID查找（用于登录后获取学生身份）
     Student selectByUserId(@Param("userId") Long userId);
@@ -22,5 +20,5 @@ public interface StudentMapper {
     int update(Student student);
 
     // 关键方法：根据用户ID删除学生档案（级联删除）
-    int deleteByUserId(@Param("userId") Long userId);
+    void deleteByUserId(@Param("userId") Long userId);
 }

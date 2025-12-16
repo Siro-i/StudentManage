@@ -1,13 +1,13 @@
 package com.school.system.common;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+
 
 /**
  * JWT 工具类，用于生成和解析 JWT 令牌
@@ -48,7 +48,7 @@ public class JwtUtils {
      * @param token JWT 字符串
      * @return 载荷 Claims
      */
-    public static Claims parseToken(String token) {
+    public static Claims parseToken(String token) throws  ExpiredJwtException {
         return Jwts.parser()
                 .verifyWith(KEY)
                 .build()

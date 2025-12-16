@@ -18,7 +18,7 @@ public interface UserMapper {
     int insert(User user);
 
     // 更新用户信息（密码、修改时间等）
-    int updateById(User user);
+    void updateById(User user);
     // 分页查询用户列表（根据条件）
     List<User> selectList(User condition);
     // 删除用户（逻辑删除）

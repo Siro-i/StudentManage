@@ -18,7 +18,7 @@ public class ServiceException extends RuntimeException {
      */
     public ServiceException(String message) {
         super(message);
-        this.code = 500; // 默认错误码
+        this.code = 500; 
     }
 
 

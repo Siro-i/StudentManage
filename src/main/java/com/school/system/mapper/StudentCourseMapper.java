@@ -31,6 +31,6 @@ public interface StudentCourseMapper {
     List<Map<String, Object>> selectMyScoreList(@Param("studentId") Long studentId);
 
     // 退课（根据课程 ID 删除所有学生的成绩）
-    int deleteByCourseId(@Param("courseId") Long courseId);
+    void deleteByCourseId(@Param("courseId") Long courseId);
 
 }

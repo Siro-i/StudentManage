@@ -11,6 +11,7 @@ import com.school.system.mapper.StudentMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Date;
 import java.util.List;
@@ -45,39 +46,54 @@ public class UserService {
 
 
     /**
-     * 新增用户 (事务管理)
+     * 新增用户
      *
      * @param user      基础用户信息
      * @param extraInfo 扩展信息（学生/教师字段）
      */
     @Transactional(rollbackFor = Exception.class)
     public void addUser(User user, Map<String, Object> extraInfo) {
-        // 1. 校验用户名唯一性
+        if (user == null) {
+            throw new ServiceException("用户信息数据缺失");
+        }
+        // 校验账号
+        if (!StringUtils.hasText(user.getUserName())) {
+            throw new ServiceException("必须填写账号(用户名)");
+        }
+        // 校验姓名
+        if (!StringUtils.hasText(user.getUserRealName())) {
+            throw new ServiceException("必须填写真实姓名");
+        }
+        // 校验角色类型 (防止恶意篡改或空值)
+        if (!"student".equals(user.getUserType())
+                && !"teacher".equals(user.getUserType())
+                && !"admin".equals(user.getUserType())) {
+            throw new ServiceException("无效的用户角色类型: " + user.getUserType());
+        }
+        //  校验用户名唯一性
         User exist = userMapper.findByUsername(user.getUserName());
         if (exist != null) {
             throw new ServiceException("该用户名已存在");
         }
 
-        // 2. 密码处理 (核心修复点)
+        //  密码处理
         String rawPwd = user.getUserPwd();
         if (rawPwd == null || rawPwd.isEmpty()) {
             rawPwd = "123456"; // 默认密码
         }
-        // !!! 必须加密后再存入数据库 !!!
         user.setUserPwd(MD5Utils.encrypt(rawPwd));
 
-        // 3. 补全基础信息
+        //  补全基础信息
         user.setUserCreatetime(new Date());
         user.setUserUpdatetime(new Date());
         userMapper.insert(user);
 
         Long userId = user.getUserId(); // 获取回填的主键 ID
 
-        // 4. 根据角色插入扩展表
+        //  根据角色插入扩展表
         if ("student".equals(user.getUserType())) {
             Student student = new Student();
             student.setUserId(userId);
-            // 防止 extraInfo 为 null
             if (extraInfo != null) {
                 student.setStudentCollege((String) extraInfo.getOrDefault("studentCollege", "未分配学院"));
                 student.setStudentGrade((String) extraInfo.getOrDefault("studentGrade", "2025级"));
@@ -88,7 +104,6 @@ public class UserService {
                 student.setStudentClass("1班");
             }
             student.setStudentCreatetime(new Date());
-            // 确保 StudentMapper 有 insert 方法
             studentMapper.insert(student);
 
         } else if ("teacher".equals(user.getUserType())) {
@@ -102,7 +117,6 @@ public class UserService {
                 teacher.setTeacherTitle("讲师");
             }
             teacher.setTeacherCreatetime(new Date());
-            // 确保 TeacherMapper 有 insert 方法
             teacherMapper.insert(teacher);
         }
     }
@@ -130,16 +144,10 @@ public class UserService {
         if (user == null) return true;
 
         // 2. 删除关联表数据 (防止外键报错或残留数据)
-        // 注意：Mapper 中需要有 deleteByUserId 方法，如果没有，请在 XML 中添加
         if ("student".equals(user.getUserType())) {
-            try {
-                // 如果 StudentMapper 还没写 deleteByUserId，这里可能会红
-                // 建议去 StudentMapper.xml 补一个: DELETE FROM student_table WHERE user_id = #{userId}
+
                 studentMapper.deleteByUserId(userId);
-            } catch (Exception e) {
-                // 容错处理：如果Mapper没写这个方法，暂时忽略，依赖数据库级联或手动清理
-                System.err.println("警告：尝试删除学生档案失败，可能是Mapper方法未定义: " + e.getMessage());
-            }
+
         } else if ("teacher".equals(user.getUserType())) {
             try {
                 teacherMapper.deleteByUserId(userId);

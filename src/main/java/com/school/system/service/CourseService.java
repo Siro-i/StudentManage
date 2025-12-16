@@ -28,17 +28,6 @@ public class CourseService {
 
 
     /**
-     * 添加课程
-     *
-     * @param course 课程信息
-     * @return 是否添加成功
-     */
-    public boolean addCourse(Course course) {
-        course.setCourseStatus(1); // 默认为可选
-        return courseMapper.insert(course) > 0;
-    }
-
-    /**
      * 查询课程列表
      * 支持按条件查询（如查询某个老师的课，或所有可选课）
      *

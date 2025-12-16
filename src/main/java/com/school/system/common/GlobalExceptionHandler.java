@@ -1,13 +1,10 @@
 package com.school.system.common;
 
-import com.school.system.common.Result; // 确保引用了你之前的 Result 类
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.sql.SQLException;
 
 /**
  * 全局异常处理器
@@ -32,24 +29,9 @@ public class GlobalExceptionHandler {
         return Result.error(e.getMessage());
     }
 
-    /**
-     * 2. 捕获数据库异常
-     * 对应场景：外键约束失败、唯一索引冲突（如录入重复学号）
-     *
-     * @param e SQL 异常
-     * @return 统一错误响应
-     */
-    @ExceptionHandler(SQLException.class)
-    public Result<?> handleSqlException(SQLException e) {
-        log.error("数据库异常: ", e);
-        if (e.getMessage().contains("Duplicate entry")) {
-            return Result.error("该信息已存在，请勿重复录入");
-        }
-        return Result.error("数据库操作异常，请检查输入");
-    }
 
     /**
-     * 3. 捕获所有其他未知异常 (Exception)
+     * 2. 捕获所有其他未知异常 (Exception)
      * 对应场景：空指针 (NPE)、代码 Bug、数据库断连
      *
      * @param e 未知异常
@@ -62,14 +44,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 4. 捕获静态资源找不到的异常
+     * 3. 捕获静态资源找不到的异常
      *
      * @param e 资源未找到异常
      * @return 404 响应
      */
     @ExceptionHandler(NoResourceFoundException.class)
     public Result<?> handleNoResourceFoundException(NoResourceFoundException e) {
-        // 不需要打印堆栈日志，只返回 404
         return new Result<>(404, "资源不存在: " + e.getResourcePath(), null);
     }
 }

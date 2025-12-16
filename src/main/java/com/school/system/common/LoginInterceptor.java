@@ -28,7 +28,7 @@ public class LoginInterceptor implements HandlerInterceptor {
      * @return 是否继续处理请求
      * @throws Exception 异常
      */
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)  {
         // 放行跨域预检请求
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;

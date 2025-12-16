@@ -3,12 +3,13 @@ package com.school.system.common;
 import lombok.Data;
 
 @Data
-/**
- * 统一结果类，用于封装 API 响应
- *
- * @param <T> 数据类型
- */
+
 public class Result<T> {
+    /**
+     * 统一结果类，用于封装 API 响应
+     *
+     *
+     */
     private Integer code;
     private String msg;
     private T data;
