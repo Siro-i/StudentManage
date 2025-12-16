@@ -6,7 +6,7 @@ import lombok.Data;
 
 
 @Data
-@ColumnWidth(20) // 设置列宽
+@ColumnWidth(20)
 public class ScoreExportVO {
 
     @ExcelProperty("学生姓名")

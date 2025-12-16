@@ -1,7 +1,11 @@
 package com.school.system.common;
 
 import java.security.MessageDigest;
-
+/**
+ * MD5 工具类，用于密码加密
+ *
+ *
+ */
 public class MD5Utils {
     /**
      * MD5加密方法

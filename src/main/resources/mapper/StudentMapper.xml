@@ -43,10 +43,10 @@
         UPDATE student_table
         <set>
             <if test="studentCollege != null">student_college = #{studentCollege},</if>
-            <if test="studentGrade != null">student_grade = #{studentGrade},</if>
             <if test="studentClass != null">student_class = #{studentClass},</if>
+            <if test="studentGrade != null">student_grade = #{studentGrade},</if>
         </set>
-        WHERE student_id = #{studentId}
+        WHERE user_id = #{userId}
     </update>
     <delete id="deleteByCourseId">
         DELETE FROM student_course_table WHERE course_id = #{courseId}

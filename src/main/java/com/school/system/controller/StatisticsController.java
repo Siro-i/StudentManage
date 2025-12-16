@@ -46,8 +46,6 @@ public class StatisticsController {
 
         // 2. 统计热门课程 (选课人数最多的前5名)
         List<com.school.system.entity.Course> allCourses = courseMapper.selectList(null);
-
-        // 按已选人数倒序，取前5
         List<Map<String, Object>> topCourses = allCourses.stream()
                 .sorted((c1, c2) -> c2.getSelectedNum() - c1.getSelectedNum()) // 降序
                 .limit(5)

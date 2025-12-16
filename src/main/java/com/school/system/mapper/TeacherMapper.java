@@ -9,9 +9,6 @@ import java.util.List;
 public interface TeacherMapper {
     int insert(Teacher teacher);
 
-    Teacher selectById(@Param("teacherId") Long teacherId);
-
-
     Teacher selectByUserId(@Param("userId") Long userId);
 
     List<Teacher> selectList(Teacher condition);

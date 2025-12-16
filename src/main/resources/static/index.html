@@ -224,9 +224,9 @@
                             <el-alert v-if="!selectedCourseId" title="请先选择一门课程以录入成绩" type="info" :closable="false" style="margin-bottom:20px;"></el-alert>
                             <el-table v-else :data="scoreList" stripe style="width: 100%">
 
-                                <el-table-column prop="studentName" label="姓名" width="120">
+                                <el-table-column prop="studentRealName" label="姓名" width="120">
                                     <template #default="scope">
-                                        {{ scope.row.studentName || '未录入' }}
+                                        {{ scope.row.studentRealName || '未录入' }}
                                     </template>
                                 </el-table-column>
 
@@ -488,9 +488,9 @@
             // ================= 1. 核心封装 =================
             const token = ref(localStorage.getItem('token') || '');
 
-            // 上传Header (Computed 解决响应性问题)
+             //上传Header
             const uploadHeaders = computed(() => ({
-                'Authorization': token.value
+                'token': token.value
             }));
 
             const handleLogout = () => {
@@ -597,7 +597,7 @@
             };
             const myScoreList = ref([]);
             const loadMyScores = async () => {
-                const res = await request(`/api/scores/student/${userInfo.value.userId}`);
+                const res = await request(`/api/scores/student/me`);
                 if(res.code === 200) myScoreList.value = res.data;
             };
             const handleDropCourse = (row) => {
@@ -618,7 +618,7 @@
                 editProfileDialog.value = true;
             };
             const loadStudentInfo = async () => {
-                const res = await request(`/api/student/info/${userInfo.value.userId}`);
+                const res = await request(`/api/student/info`);
                 if (res.code === 200) studentInfo.value = res.data;
             };
             const handleUpdateProfile = async () => {
@@ -668,7 +668,7 @@
             const editTeacherDialog = ref(false);
             const teacherForm = ref({ userPhone: '', userEmail: '' });
             const loadTeacherInfo = async () => {
-                const res = await request(`/api/teacher/info/${userInfo.value.userId}`);
+                const res = await request(`/api/teacher/info`);
                 if (res.code === 200) teacherInfo.value = res.data || {};
             };
             const openTeacherEditDialog = () => {

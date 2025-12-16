@@ -34,4 +34,10 @@ public class User {
     private Date userUpdatetime;
     /** 真实姓名 */
     private String userRealName;
+    /**扩展字段*/
+    private String studentCollege;
+    private String studentClass;
+    private String studentGrade;
+    private String teacherCollege;
+    private String teacherTitle;
 }

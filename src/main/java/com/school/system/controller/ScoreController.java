@@ -34,10 +34,7 @@ public class ScoreController {
         private Integer score;
 
     }
-    /**
-     * 录入/修改成绩
-     * 对应 ScoreOperable.setScore()
-     */
+
     @PostMapping("/entry")
     /**
      * 录入或修改课程成绩，仅教师/管理员可用。
@@ -65,10 +62,7 @@ public class ScoreController {
         }
     }
 
-    /**
-     * 统计课程成绩
-     * 对应 ScoreOperable.statisticCourseScore()
-     */
+
     @GetMapping("/statistics/{courseId}")
     /**
      * 获取课程成绩统计，仅教师/管理员可用。
@@ -85,11 +79,7 @@ public class ScoreController {
         Object stats = scoreService.statisticCourseScore(courseId);
         return Result.success(stats);
     }
-    /**
-     * 学生查询自己的成绩单
-     * GET /api/scores/student/{studentId}
-     * 对应文档 2.3.3 成绩查询(学生)
-     */
+
     @GetMapping("/student/me")
     /**
      * 学生查看个人成绩单，绑定当前登录学生。
@@ -106,11 +96,7 @@ public class ScoreController {
         List<Map<String, Object>> list = scoreService.listMyScores(currentUserId);
         return Result.success(list);
     }
-    /**
-     * 教师查询课程的所有学生成绩
-     * GET /api/scores/course/{courseId}
-     * 对应文档 2.3.4 成绩查询(教师)
-     */
+
     @GetMapping("/course/{courseId}")
     /**
      * 教师/管理员查看课程成绩列表。
@@ -128,10 +114,7 @@ public class ScoreController {
         return Result.success(list);
     }
 
-    /**
-     * 导出成绩单 Excel
-     * GET /api/scores/export/{courseId}
-     */
+
     @GetMapping("/export/{courseId}")
     /**
      * 导出课程成绩为 Excel，仅教师/管理员可用。
@@ -190,22 +173,8 @@ public class ScoreController {
                     .sheet("成绩表")
                     .doWrite(exportList);
         } catch (Exception e) {
-            e.printStackTrace(); // 在控制台打印报错
+            e.printStackTrace(); 
         }
     }
 
-
-    // 获取某门课的学生名单
-
-    @GetMapping("/course/{courseId}/students")
-    /**
-     * 获取课程的学生名单及成绩情况。
-     *
-     * @param courseId 课程 ID
-     * @return 学生成绩列表
-     */
-    public Result<List<Map<String, Object>>> getCourseStudents(@PathVariable Long courseId) {
-        List<Map<String, Object>> list = studentCourseMapper.selectStudentScoreList(courseId);
-        return Result.success(list);
-    }
 }

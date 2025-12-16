@@ -35,7 +35,6 @@ public class GlobalExceptionHandler {
     /**
      * 2. 捕获数据库异常
      * 对应场景：外键约束失败、唯一索引冲突（如录入重复学号）
-     * 对应文档 [cite: 136] "若信息重复...提示该信息已存在"
      *
      * @param e SQL 异常
      * @return 统一错误响应
@@ -52,7 +51,6 @@ public class GlobalExceptionHandler {
     /**
      * 3. 捕获所有其他未知异常 (Exception)
      * 对应场景：空指针 (NPE)、代码 Bug、数据库断连
-     * 对应文档 [cite: 136] "系统连接异常，请稍后重试"
      *
      * @param e 未知异常
      * @return 统一错误响应
@@ -60,7 +58,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<?> handleException(Exception e) {
         log.error("系统未知异常: ", e);
-        // 生产环境通常不直接展示具体的堆栈信息给用户，而是展示通用提示
         return Result.error("系统连接异常或繁忙，请稍后重试");
     }
 

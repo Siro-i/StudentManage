@@ -37,7 +37,7 @@ public class StudentController {
     }
 
     @Autowired
-    private com.school.system.service.UserService userService; // 注入 UserService 用于更新 user_table
+    private com.school.system.service.UserService userService;
 
     @PutMapping("/profile")
     /**
@@ -54,8 +54,6 @@ public class StudentController {
         if (!"student".equals(currentUserType)) {
             return Result.error("仅学生可修改个人资料");
         }
-
-        // 1. 获取允许修改的字段
         String phone = params.get("userPhone");
         String email = params.get("userEmail");
         if (phone != null && !phone.isEmpty()) {
@@ -69,14 +67,10 @@ public class StudentController {
                 return Result.error("邮箱格式不正确");
             }
         }
-
-        // 2. 这里的 userId 来自 Token 拦截器
         User user = new User();
         user.setUserId(userId);
         user.setUserPhone(phone);
         user.setUserEmail(email);
-
-        // 3. 调用 UserService 现有的基础更新方法
         userService.updateUserBasic(user);
 
         return Result.success(null);

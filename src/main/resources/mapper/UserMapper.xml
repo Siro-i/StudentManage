@@ -54,21 +54,33 @@
         WHERE user_id = #{userId}
     </update>
     <select id="selectList" resultType="com.school.system.entity.User">
-        SELECT * FROM user_table
+        SELECT
+        u.*,
+        s.student_college,
+        s.student_class,
+        s.student_grade,
+        t.teacher_college,
+        t.teacher_title
+
+        FROM user_table u
+        LEFT JOIN student_table s ON u.user_id = s.user_id
+        LEFT JOIN teacher_table t ON u.user_id = t.user_id
+
         <where>
             <if test="userType != null and userType != ''">
-                AND user_type = #{userType}
+                AND u.user_type = #{userType}
             </if>
 
             <if test="userRealName != null and userRealName != ''">
-                AND user_real_name LIKE concat('%', #{userRealName}, '%')
+                AND u.user_real_name LIKE concat('%', #{userRealName}, '%')
             </if>
 
             <if test="userPhone != null and userPhone != ''">
-                AND user_phone LIKE concat('%', #{userPhone}, '%')
+                AND u.user_phone LIKE concat('%', #{userPhone}, '%')
             </if>
         </where>
-        ORDER BY user_createtime DESC
+
+        ORDER BY u.user_createtime DESC
     </select>
     <delete id="deleteById">
         DELETE FROM user_table WHERE user_id = #{userId}

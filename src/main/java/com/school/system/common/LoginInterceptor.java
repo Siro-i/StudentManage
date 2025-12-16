@@ -9,7 +9,11 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-
+/**
+ * 登录拦截器，验证JWT token
+ *
+ *
+ */
 public class LoginInterceptor implements HandlerInterceptor {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -64,7 +68,6 @@ public class LoginInterceptor implements HandlerInterceptor {
             body.put("data", null);
             response.getWriter().write(MAPPER.writeValueAsString(body));
         } catch (Exception ignored) {
-            // 如果写响应失败，保持状态码
         }
     }
 }

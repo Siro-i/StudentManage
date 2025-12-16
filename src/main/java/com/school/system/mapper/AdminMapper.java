@@ -10,5 +10,4 @@ public interface AdminMapper {
 
     Admin selectByUserId(@Param("userId") Long userId);
 
-    int updateById(Admin admin);
 }

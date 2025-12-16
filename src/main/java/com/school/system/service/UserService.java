@@ -38,26 +38,11 @@ public class UserService {
         if (user == null) {
             return false;
         }
-        // 必须使用加密后的密码进行比对
         String encryptedInput = MD5Utils.encrypt(password);
         return user.getUserPwd().equals(encryptedInput);
     }
 
-    /**
-     * 重置密码
-     *
-     * @param userId      目标用户 ID
-     * @param newPassword 新密码（明文）
-     */
-    public void resetPassword(Long userId, String newPassword) {
-        User user = userMapper.selectById(userId);
-        if (user == null) throw new ServiceException("用户不存在");
 
-        // 修复：密码必须加密
-        user.setUserPwd(MD5Utils.encrypt(newPassword));
-        user.setUserUpdatetime(new Date());
-        userMapper.updateById(user);
-    }
 
     /**
      * 新增用户 (事务管理)
@@ -65,7 +50,7 @@ public class UserService {
      * @param user      基础用户信息
      * @param extraInfo 扩展信息（学生/教师字段）
      */
-    @Transactional(rollbackFor = Exception.class) // 建议加上 rollbackFor，防止异常吞掉
+    @Transactional(rollbackFor = Exception.class)
     public void addUser(User user, Map<String, Object> extraInfo) {
         // 1. 校验用户名唯一性
         User exist = userMapper.findByUsername(user.getUserName());
@@ -173,8 +158,6 @@ public class UserService {
      * @param user 待更新的用户信息
      */
     public void updateUserBasic(User user) {
-        // 如果这里包含密码修改，也要加密，但通常 updateBasic 不含密码
-        // 如果包含密码，请在 Controller 层处理好加密后再传进来，或者在这里判断
         user.setUserUpdatetime(new Date());
         userMapper.updateById(user);
     }

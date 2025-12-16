@@ -26,10 +26,9 @@ public class CourseService {
     @Autowired
     private StudentMapper studentMapper;
 
-    // --- 对应文档 CourseOperable 接口 ---
 
     /**
-     * 添加课程 [cite: 68]
+     * 添加课程
      *
      * @param course 课程信息
      * @return 是否添加成功
@@ -40,7 +39,7 @@ public class CourseService {
     }
 
     /**
-     * 查询课程列表 [cite: 102]
+     * 查询课程列表
      * 支持按条件查询（如查询某个老师的课，或所有可选课）
      *
      * @param condition 查询条件
@@ -53,7 +52,7 @@ public class CourseService {
 
 
     /**
-     * 学生选课 [cite: 83, 114]
+     * 学生选课
      * 逻辑：1.校验是否重复选课 2.校验名额是否已满 3.执行选课
      *
      * @param userId   当前用户 ID（学生）
@@ -64,23 +63,23 @@ public class CourseService {
         // 2.通过 userId 查出真正的 studentId
         Student student = studentMapper.selectByUserId(userId);
         if (student == null) {
-            throw new RuntimeException("未找到学生档案，无法选课");
+            throw new ServiceException("未找到学生档案，无法选课");
         }
         Long trueStudentId = student.getStudentId();
 
         // 3. 使用 trueStudentId 进行后续操作
         StudentCourse existing = studentCourseMapper.findByStudentAndCourse(trueStudentId, courseId);
         if (existing != null) {
-            throw new RuntimeException("请勿重复选课");
+            throw new ServiceException("请勿重复选课");
         }
 
         // 校验课程名额
         com.school.system.entity.Course course = courseMapper.selectById(courseId);
         if (course.getCourseStatus() != null && course.getCourseStatus() == 0) {
-            throw new RuntimeException("课程已停止选课");
+            throw new ServiceException("课程已停止选课");
         }
         if (course.getSelectedNum() >= course.getMaxNum()) {
-            throw new RuntimeException("该课程名额已满");
+            throw new ServiceException("该课程名额已满");
         }
 
         // 时间冲突检测
@@ -88,7 +87,7 @@ public class CourseService {
             List<Course> myCourses = courseMapper.selectByStudentId(trueStudentId);
             for (Course existingCourse : myCourses) {
                 if (course.getCourseTime().equals(existingCourse.getCourseTime())) {
-                    throw new RuntimeException("选课冲突，该时间段已有课程: " + existingCourse.getCourseName());
+                    throw new ServiceException("选课冲突，该时间段已有课程: " + existingCourse.getCourseName());
                 }
             }
         }

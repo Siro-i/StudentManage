@@ -8,6 +8,12 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+/**
+ * JWT 工具类，用于生成和解析 JWT 令牌
+ *
+ *
+ */
 public class JwtUtils {
 
     // 1. 生成一个安全的密钥 (HMAC-SHA256)

@@ -19,6 +19,7 @@
     </insert>
 
     <select id="selectByUserId" resultType="com.school.system.entity.Teacher">
+
         SELECT * FROM teacher_table WHERE user_id = #{userId}
     </select>
 
@@ -30,9 +31,7 @@
         </set>
         WHERE teacher_id = #{teacherId}
     </update>
-    <select id="selectById" resultMap="BaseResultMap">
-        SELECT * FROM teacher_table WHERE teacher_id = #{teacherId}
-    </select>
+
 
     <select id="selectList" resultMap="BaseResultMap">
         SELECT * FROM teacher_table
@@ -48,9 +47,8 @@
         <set>
             <if test="teacherCollege != null">teacher_college = #{teacherCollege},</if>
             <if test="teacherTitle != null">teacher_title = #{teacherTitle},</if>
-            <if test="teacherUpdatetime != null">teacher_updatetime = #{teacherUpdatetime},</if>
         </set>
-        WHERE teacher_id = #{teacherId}
+        WHERE user_id = #{userId}
     </update>
 
 

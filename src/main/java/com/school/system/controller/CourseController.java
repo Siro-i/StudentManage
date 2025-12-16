@@ -28,14 +28,13 @@ public class CourseController {
      * @return 课程列表
      */
     public Result<List<Course>> listCourses(Course condition) {
-        // SpringMVC 会自动将请求参数映射到 Course 对象中
         List<Course> list = courseService.listCourses(condition);
         return Result.success(list);
     }
 
     @PostMapping
     /**
-     * 添加课程。管理员或教师可调用，教师仅能为自己创建课程。
+     * 添加课程。管理员或教师可调用，教师仅能为自己创建课程,目前仅实现教师调用。
      *
      * @param course          课程信息
      * @param currentUserType 当前用户角色
@@ -48,19 +47,17 @@ public class CourseController {
         if (!"admin".equals(currentUserType) && !"teacher".equals(currentUserType)) {
             return Result.error("无权限添加课程");
         }
-        // 非管理员的教师只能为自己创建课程
         if ("teacher".equals(currentUserType)) {
             course.setTeacherId(currentUserId);
         }
         checkRoomConflict(course);
-        if (course.getSelectedNum() == null) course.setSelectedNum(0); // 防止空指针
+        if (course.getSelectedNum() == null) course.setSelectedNum(0);
         course.setCourseStatus(1);
         course.setCourseCreatetime(new Date());
         courseMapper.insert(course);
         return Result.success(null);
     }
 
-    // --- 选课相关 (对应 Selectable 接口) ---
 
     @PostMapping("/{courseId}/select")
     /**

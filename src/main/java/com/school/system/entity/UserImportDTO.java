@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class UserImportDTO {
 
-    @ExcelProperty("账号") // Excel 表头名字
+    @ExcelProperty("账号")
     private String userName;
 
     @ExcelProperty("姓名")
