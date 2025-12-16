@@ -29,49 +29,110 @@ public class CourseService {
 
     /**
      * 查询课程列表
-     * 支持按条件查询（如查询某个老师的课，或所有可选课）
-     *
-     * @param condition 查询条件
-     * @return 课程列表
      */
     public List<Course> listCourses(Course condition) {
         return courseMapper.selectList(condition);
     }
 
+    /**
+     * 添加课程
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void addCourse(Course course, String userType, Long userId) {
+        // 1. 权限与归属校验
+        if (!"admin".equals(userType) && !"teacher".equals(userType)) {
+            throw new ServiceException("无权限添加课程");
+        }
+        if ("teacher".equals(userType)) {
+            course.setTeacherId(userId);
+        }
 
+        // 2. 教室冲突检测
+        checkRoomConflict(course);
+
+        // 3. 数据补全
+        if (course.getSelectedNum() == null) course.setSelectedNum(0);
+        course.setCourseStatus(1);
+        course.setCourseCreatetime(new Date());
+
+        courseMapper.insert(course);
+    }
+
+    /**
+     * 修改课程
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateCourse(Course course, String userType, Long userId) {
+        if (!"admin".equals(userType) && !"teacher".equals(userType)) {
+            throw new ServiceException("无权限修改课程");
+        }
+
+        Course dbCourse = courseMapper.selectById(course.getCourseId());
+        if (dbCourse == null) {
+            throw new ServiceException("课程不存在");
+        }
+
+        // 教师仅能修改自己的课程
+        if ("teacher".equals(userType) && dbCourse.getTeacherId() != null
+                && !dbCourse.getTeacherId().equals(userId)) {
+            throw new ServiceException("无权限修改其他教师的课程");
+        }
+
+        checkRoomConflict(course);
+        courseMapper.update(course);
+    }
+
+    /**
+     * 删除课程（级联删除选课记录）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCourse(Long courseId, String userType, Long userId) {
+        if (!"admin".equals(userType) && !"teacher".equals(userType)) {
+            throw new ServiceException("无权限删除课程");
+        }
+
+        Course course = courseMapper.selectById(courseId);
+        if (course == null) return;
+
+        if ("teacher".equals(userType) && course.getTeacherId() != null && !course.getTeacherId().equals(userId)) {
+            throw new ServiceException("无权限删除其他教师的课程");
+        }
+
+        // 1. 先删除该课程所有的选课/成绩记录
+        studentCourseMapper.deleteByCourseId(courseId);
+
+        // 2. 再删除课程本身
+        courseMapper.deleteById(courseId);
+    }
 
     /**
      * 学生选课
-     * 逻辑：1.校验是否重复选课 2.校验名额是否已满 3.执行选课
-     *
-     * @param userId   当前用户 ID（学生）
-     * @param courseId 课程 ID
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void selectCourse(Long userId, Long courseId) {
-        // 2.通过 userId 查出真正的 studentId
+        // 转换 ID
         Student student = studentMapper.selectByUserId(userId);
         if (student == null) {
             throw new ServiceException("未找到学生档案，无法选课");
         }
         Long trueStudentId = student.getStudentId();
 
-        // 3. 使用 trueStudentId 进行后续操作
+        // 重复校验
         StudentCourse existing = studentCourseMapper.findByStudentAndCourse(trueStudentId, courseId);
         if (existing != null) {
             throw new ServiceException("请勿重复选课");
         }
 
-        // 校验课程名额
-        com.school.system.entity.Course course = courseMapper.selectById(courseId);
-        if (course.getCourseStatus() != null && course.getCourseStatus() == 0) {
+        // 名额与状态校验
+        Course course = courseMapper.selectById(courseId);
+        if (course == null || (course.getCourseStatus() != null && course.getCourseStatus() == 0)) {
             throw new ServiceException("课程已停止选课");
         }
         if (course.getSelectedNum() >= course.getMaxNum()) {
             throw new ServiceException("该课程名额已满");
         }
 
-        // 时间冲突检测
+        // 时间冲突校验
         if (course.getCourseTime() != null && !course.getCourseTime().isEmpty()) {
             List<Course> myCourses = courseMapper.selectByStudentId(trueStudentId);
             for (Course existingCourse : myCourses) {
@@ -81,7 +142,7 @@ public class CourseService {
             }
         }
 
-        // 写入选课记录
+        // 写入
         StudentCourse sc = new StudentCourse();
         sc.setStudentId(trueStudentId);
         sc.setCourseId(courseId);
@@ -94,15 +155,11 @@ public class CourseService {
 
     /**
      * 学生退课
-     * 
-     * @param userId 当前用户ID（学生）
-     * @param courseId 课程ID
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void dropCourse(Long userId, Long courseId) {
-        // 同样要转换 ID
         Student student = studentMapper.selectByUserId(userId);
-        if (student == null) throw new RuntimeException("学生信息异常");
+        if (student == null) throw new ServiceException("学生信息异常");
 
         Long trueStudentId = student.getStudentId();
 
@@ -110,23 +167,27 @@ public class CourseService {
         if (rows > 0) {
             courseMapper.decrementSelectedNum(courseId);
         } else {
-            throw new RuntimeException("未找到选课记录");
+            throw new ServiceException("未找到选课记录");
         }
     }
 
     /**
-     * 删除课程（级联删除选课记录）
-     * 
-     * @param courseId 课程ID
+     * 内部方法：检查教室占用冲突
      */
-    @Transactional
-    public void deleteCourse(Long courseId) {
-        // 1. 先删除该课程所有的选课/成绩记录
-        studentCourseMapper.deleteByCourseId(courseId);
+    private void checkRoomConflict(Course course) {
+        if (course.getCourseTime() == null || course.getCourseTime().isEmpty()) return;
+        if (course.getCourseRoom() == null || course.getCourseRoom().isEmpty()) return;
 
-        // 2. 再删除课程本身
-        courseMapper.deleteById(courseId);
+        List<Course> conflicts = courseMapper.selectByTimeAndRoom(course.getCourseTime(), course.getCourseRoom());
+
+        for (Course existing : conflicts) {
+            // 冲突判定：(新增且有记录) 或 (修改且记录ID不是当前ID)
+            if (course.getCourseId() == null || !existing.getCourseId().equals(course.getCourseId())) {
+                throw new ServiceException(
+                        String.format("排课冲突！[%s] 的 [%s] 已被课程《%s》占用",
+                                course.getCourseTime(), course.getCourseRoom(), existing.getCourseName())
+                );
+            }
+        }
     }
-
-
 }

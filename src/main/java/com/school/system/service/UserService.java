@@ -2,12 +2,14 @@ package com.school.system.service;
 
 import com.school.system.common.MD5Utils;
 import com.school.system.common.ServiceException;
+import com.school.system.entity.Admin;
 import com.school.system.entity.Student;
 import com.school.system.entity.Teacher;
 import com.school.system.entity.User;
-import com.school.system.mapper.UserMapper;
-import com.school.system.mapper.TeacherMapper;
+import com.school.system.mapper.AdminMapper;
 import com.school.system.mapper.StudentMapper;
+import com.school.system.mapper.TeacherMapper;
+import com.school.system.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +28,11 @@ public class UserService {
     private TeacherMapper teacherMapper;
     @Autowired
     private StudentMapper studentMapper;
+    @Autowired
+    private AdminMapper adminMapper;
 
     /**
-     * 登录逻辑
-     *
-     * @param username 用户名
-     * @param password 明文密码
-     * @return 登录是否成功
+     * 登录
      */
     public boolean login(String username, String password) {
         User user = userMapper.findByUsername(username);
@@ -43,130 +43,193 @@ public class UserService {
         return user.getUserPwd().equals(encryptedInput);
     }
 
-
-
     /**
-     * 新增用户
-     *
-     * @param user      基础用户信息
-     * @param extraInfo 扩展信息（学生/教师字段）
+     * 管理员：保存或更新用户 (统一入口)
      */
     @Transactional(rollbackFor = Exception.class)
-    public void addUser(User user, Map<String, Object> extraInfo) {
-        if (user == null) {
-            throw new ServiceException("用户信息数据缺失");
-        }
-        // 校验账号
-        if (!StringUtils.hasText(user.getUserName())) {
-            throw new ServiceException("必须填写账号(用户名)");
-        }
-        // 校验姓名
-        if (!StringUtils.hasText(user.getUserRealName())) {
-            throw new ServiceException("必须填写真实姓名");
-        }
-        // 校验角色类型 (防止恶意篡改或空值)
-        if (!"student".equals(user.getUserType())
-                && !"teacher".equals(user.getUserType())
-                && !"admin".equals(user.getUserType())) {
-            throw new ServiceException("无效的用户角色类型: " + user.getUserType());
-        }
-        //  校验用户名唯一性
-        User exist = userMapper.findByUsername(user.getUserName());
-        if (exist != null) {
-            throw new ServiceException("该用户名已存在");
+    public void saveOrUpdateUser(Map<String, Object> params, String operatorType) {
+        if (!"admin".equals(operatorType)) {
+            throw new ServiceException("无权限操作用户");
         }
 
-        //  密码处理
-        String rawPwd = user.getUserPwd();
-        if (rawPwd == null || rawPwd.isEmpty()) {
-            rawPwd = "123456"; // 默认密码
+        // 提取数据
+        String phone = (String) params.get("userPhone");
+        String email = (String) params.get("userEmail");
+        validateContactInfo(phone, email);
+
+        User user = new User();
+        if (params.get("userId") != null) {
+            user.setUserId(Long.valueOf(params.get("userId").toString()));
         }
-        user.setUserPwd(MD5Utils.encrypt(rawPwd));
+        user.setUserName((String) params.get("userName"));
+        user.setUserRealName((String) params.get("userRealName"));
+        user.setUserType((String) params.get("userType"));
+        user.setUserPhone(phone);
+        user.setUserEmail(email);
 
-        //  补全基础信息
-        user.setUserCreatetime(new Date());
-        user.setUserUpdatetime(new Date());
-        userMapper.insert(user);
+        String pwd = (String) params.get("userPwd");
+        if (StringUtils.hasText(pwd)) {
+            user.setUserPwd(pwd); // 下面方法会加密
+        }
 
-        Long userId = user.getUserId(); // 获取回填的主键 ID
-
-        //  根据角色插入扩展表
-        if ("student".equals(user.getUserType())) {
-            Student student = new Student();
-            student.setUserId(userId);
-            if (extraInfo != null) {
-                student.setStudentCollege((String) extraInfo.getOrDefault("studentCollege", "未分配学院"));
-                student.setStudentGrade((String) extraInfo.getOrDefault("studentGrade", "2025级"));
-                student.setStudentClass((String) extraInfo.getOrDefault("studentClass", "1班"));
-            } else {
-                student.setStudentCollege("未分配学院");
-                student.setStudentGrade("2025级");
-                student.setStudentClass("1班");
-            }
-            student.setStudentCreatetime(new Date());
-            studentMapper.insert(student);
-
-        } else if ("teacher".equals(user.getUserType())) {
-            Teacher teacher = new Teacher();
-            teacher.setUserId(userId);
-            if (extraInfo != null) {
-                teacher.setTeacherCollege((String) extraInfo.getOrDefault("teacherCollege", "未分配学院"));
-                teacher.setTeacherTitle((String) extraInfo.getOrDefault("teacherTitle", "讲师"));
-            } else {
-                teacher.setTeacherCollege("未分配学院");
-                teacher.setTeacherTitle("讲师");
-            }
-            teacher.setTeacherCreatetime(new Date());
-            teacherMapper.insert(teacher);
+        if (user.getUserId() == null) {
+            this.addUser(user, params);
+        } else {
+            this.updateUserFull(user, params);
         }
     }
 
     /**
+     * 新增用户 (事务)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void addUser(User user, Map<String, Object> extraInfo) {
+        if (user == null) throw new ServiceException("用户信息缺失");
+        if (!StringUtils.hasText(user.getUserName())) throw new ServiceException("账号不能为空");
+        if (!StringUtils.hasText(user.getUserRealName())) throw new ServiceException("姓名不能为空");
+
+        User exist = userMapper.findByUsername(user.getUserName());
+        if (exist != null) throw new ServiceException("账号已存在");
+
+        // 密码处理
+        String rawPwd = StringUtils.hasText(user.getUserPwd()) ? user.getUserPwd() : "123456";
+        user.setUserPwd(MD5Utils.encrypt(rawPwd));
+        user.setUserCreatetime(new Date());
+        user.setUserUpdatetime(new Date());
+
+        userMapper.insert(user);
+        Long userId = user.getUserId();
+
+        // 插入扩展表
+        if ("student".equals(user.getUserType())) {
+            Student s = new Student();
+            s.setUserId(userId);
+            s.setStudentCollege((String) extraInfo.getOrDefault("studentCollege", "未分配"));
+            s.setStudentClass((String) extraInfo.getOrDefault("studentClass", ""));
+            s.setStudentGrade((String) extraInfo.getOrDefault("studentGrade", ""));
+            s.setStudentCreatetime(new Date());
+            studentMapper.insert(s);
+
+        } else if ("teacher".equals(user.getUserType())) {
+            Teacher t = new Teacher();
+            t.setUserId(userId);
+            t.setTeacherCollege((String) extraInfo.getOrDefault("teacherCollege", "未分配"));
+            t.setTeacherTitle((String) extraInfo.getOrDefault("teacherTitle", "讲师"));
+            t.setTeacherCreatetime(new Date());
+            teacherMapper.insert(t);
+
+        } else if ("admin".equals(user.getUserType())) {
+            Admin a = new Admin();
+            a.setUserId(userId);
+            a.setAdminTitle("普通管理员");
+            a.setAdminCreatetime(new Date());
+            adminMapper.insert(a);
+        }
+    }
+
+    /**
+     * 全量更新用户 (事务)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateUserFull(User user, Map<String, Object> extraInfo) {
+        // 更新主表
+        if (StringUtils.hasText(user.getUserPwd())) {
+            user.setUserPwd(MD5Utils.encrypt(user.getUserPwd()));
+        }
+        user.setUserUpdatetime(new Date());
+        userMapper.updateById(user);
+
+        // 更新扩展表
+        if ("student".equals(user.getUserType())) {
+            Student s = studentMapper.selectByUserId(user.getUserId());
+            boolean isNew = (s == null);
+            if (isNew) {
+                s = new Student();
+                s.setUserId(user.getUserId());
+                s.setStudentCreatetime(new Date());
+            }
+            s.setStudentCollege((String) extraInfo.getOrDefault("studentCollege", ""));
+            s.setStudentClass((String) extraInfo.getOrDefault("studentClass", ""));
+            s.setStudentGrade((String) extraInfo.getOrDefault("studentGrade", ""));
+
+            if (isNew) studentMapper.insert(s);
+            else studentMapper.update(s);
+
+        } else if ("teacher".equals(user.getUserType())) {
+            Teacher t = teacherMapper.selectByUserId(user.getUserId());
+            boolean isNew = (t == null);
+            if (isNew) {
+                t = new Teacher();
+                t.setUserId(user.getUserId());
+                t.setTeacherCreatetime(new Date());
+            }
+            t.setTeacherCollege((String) extraInfo.getOrDefault("teacherCollege", ""));
+            t.setTeacherTitle((String) extraInfo.getOrDefault("teacherTitle", ""));
+
+            if (isNew) teacherMapper.insert(t);
+            else teacherMapper.updateById(t);
+        }
+    }
+
+    /**
+     * 删除用户
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteUser(Long userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) return true;
+
+        if ("student".equals(user.getUserType())) {
+            studentMapper.deleteByUserId(userId);
+        } else if ("teacher".equals(user.getUserType())) {
+            teacherMapper.deleteByUserId(userId);
+        }
+        // 管理员暂不处理关联表，或按需补充
+        return userMapper.deleteById(userId) > 0;
+    }
+
+    /**
      * 查询用户列表
-     *
-     * @param condition 查询条件
-     * @return 用户列表
      */
     public List<User> listUsers(User condition) {
         return userMapper.selectList(condition);
     }
 
     /**
-     * 删除用户 (级联删除)
-     *
-     * @param userId 用户 ID
-     * @return 是否删除成功
+     * 修改密码
      */
-    @Transactional(rollbackFor = Exception.class)
-    public boolean deleteUser(Long userId) {
-        // 1. 先查用户，确定类型
-        User user = userMapper.selectById(userId);
-        if (user == null) return true;
-
-        // 2. 删除关联表数据 (防止外键报错或残留数据)
-        if ("student".equals(user.getUserType())) {
-
-                studentMapper.deleteByUserId(userId);
-
-        } else if ("teacher".equals(user.getUserType())) {
-            try {
-                teacherMapper.deleteByUserId(userId);
-            } catch (Exception e) {
-                System.err.println("警告：尝试删除教师档案失败: " + e.getMessage());
-            }
+    public void updatePassword(Long targetUserId, String newPwd, String operatorType, Long operatorId) {
+        if (!"admin".equals(operatorType) && !targetUserId.equals(operatorId)) {
+            throw new ServiceException("无权限修改他人密码");
         }
-
-        // 3. 删除主表数据
-        return userMapper.deleteById(userId) > 0;
+        User user = new User();
+        user.setUserId(targetUserId);
+        user.setUserPwd(MD5Utils.encrypt(newPwd));
+        userMapper.updateById(user);
     }
 
     /**
-     * 更新用户基本信息
-     *
-     * @param user 待更新的用户信息
+     * 更新个人资料 (学生/教师通用)
      */
-    public void updateUserBasic(User user) {
+    public void updateMyProfile(Long userId, String phone, String email) {
+        validateContactInfo(phone, email);
+        User user = new User();
+        user.setUserId(userId);
+        user.setUserPhone(phone);
+        user.setUserEmail(email);
         user.setUserUpdatetime(new Date());
         userMapper.updateById(user);
+    }
+
+    /**
+     * 校验联系方式
+     */
+    public void validateContactInfo(String phone, String email) {
+        if (StringUtils.hasText(phone) && !phone.matches("^\\d{11}$")) {
+            throw new ServiceException("手机号必须为11位数字");
+        }
+        if (StringUtils.hasText(email) && !email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+            throw new ServiceException("邮箱格式不正确");
+        }
     }
 }
