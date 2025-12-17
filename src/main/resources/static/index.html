@@ -1040,7 +1040,7 @@
                                 ElMessage.success({
                                     message: '还原成功！即将刷新页面...',
                                     duration: 2000,
-                                    onClose: () => location.reload() // 还原后刷新页面重置状态
+                                    onClose: () => location.reload()
                                 });
                             } else {
                                 ElMessage.error(res.msg || '还原失败');

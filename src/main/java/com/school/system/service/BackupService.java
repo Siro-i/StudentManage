@@ -25,6 +25,12 @@ public class BackupService {
     @Value("${spring.datasource.url}")
     private String dbUrl;
 
+    @Value("${project.mysql.dump-path}")
+    private String dumpPath;
+    @Value("${project.mysql.client-path}")
+    private String clientPath;
+
+
     // 备份文件存储路径 (项目根目录下的 backup 文件夹)
     private final String BACKUP_DIR = System.getProperty("user.dir") + File.separator + "backup";
 
@@ -43,10 +49,10 @@ public class BackupService {
 
         try {
 
-            String mysqldumpCmd = "mysqldump";
+
 
             List<String> cmd = new ArrayList<>();
-            cmd.add(mysqldumpCmd);
+            cmd.add(dumpPath);
             cmd.add("-u" + dbUser);
             cmd.add("-p" + dbPass);
             cmd.add("--column-statistics=0");
@@ -169,10 +175,10 @@ public class BackupService {
         String dbName = getDbNameFromUrl(dbUrl);
 
         try {
-            String mysqlCmd = "mysql";
+
 
             List<String> cmd = new ArrayList<>();
-            cmd.add(mysqlCmd);
+            cmd.add(clientPath);
             cmd.add("-u" + dbUser);
             cmd.add("-p" + dbPass);
             cmd.add(dbName);

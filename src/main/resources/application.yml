@@ -17,6 +17,7 @@ spring:
     time-zone: GMT+8
 
 
+
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.school.system.entity
@@ -29,3 +30,9 @@ logging:
   level:
     root: INFO
     com.school.system: DEBUG
+
+
+project:
+  mysql:
+    dump-path: "mysqldump"
+    client-path: "mysql"
