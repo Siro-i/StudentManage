@@ -11,7 +11,7 @@ public class Course {
     /** 课程名称 */
     private String courseName;
 
-    /** 学分 (数据库为 TINYINT，Java用 Integer 接收) */
+    /** 学分  */
     private Integer courseCredit;
 
     /** 授课教师ID */

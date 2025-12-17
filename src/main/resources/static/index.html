@@ -93,8 +93,14 @@
 
                     <div v-if="currentPath === '/student/courses'">
                         <div class="search-bar">
-                            <el-button type="primary" @click="loadCourses">刷新课程列表</el-button>
+                            <el-input v-model="courseQuery.courseName" placeholder="课程名称" style="width: 200px;" clearable @clear="loadCourses"></el-input>
+                            <el-select v-model="courseQuery.courseTime" placeholder="上课时间" style="width: 150px;" clearable @clear="loadCourses">
+                                <el-option v-for="item in timeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                            </el-select>
+                            <el-button type="primary" @click="loadCourses">查询</el-button>
+                            <el-button @click="resetCourseQuery">重置</el-button>
                         </div>
+
                         <el-row :gutter="20">
                             <el-col :span="8" v-for="c in courseList" :key="c.courseId">
                                 <div class="course-card">
@@ -123,7 +129,6 @@
                         </el-row>
                         <el-empty v-if="courseList.length === 0" description="暂无课程"></el-empty>
                     </div>
-
                     <div v-if="currentPath === '/student/my-scores'">
                         <div class="card">
                             <div class="search-bar"><el-button type="primary" @click="loadMyScores">刷新成绩</el-button></div>
@@ -185,9 +190,14 @@
                     <div v-if="currentPath === '/teacher/courses'">
                         <div class="card">
                             <div class="search-bar">
+                                <el-input v-model="courseQuery.courseName" placeholder="课程名称" style="width: 200px;" clearable></el-input>
+                                <el-button type="primary" @click="loadTeacherCourses">查询</el-button>
+                                <el-button @click="resetCourseQuery">重置</el-button>
+
+                                <el-divider direction="vertical"></el-divider>
                                 <el-button type="success" @click="handleEditCourse(null)">发布新课程</el-button>
-                                <el-button @click="loadTeacherCourses">刷新</el-button>
                             </div>
+
                             <el-table :data="teacherCourseList" stripe style="width: 100%">
                                 <el-table-column prop="courseName" label="课程名称"></el-table-column>
                                 <el-table-column prop="courseTime" label="时间" width="150"></el-table-column>
@@ -301,6 +311,7 @@
                             </el-form>
                         </div>
 
+
                         <div class="card">
                             <div style="margin-bottom: 15px; display: flex; gap: 10px;">
                                 <el-button type="success" @click="handleEditUser(null)">
@@ -355,6 +366,35 @@
                                         @current-change="handlePageChange"
                                 ></el-pagination>
                             </div>
+                        </div>
+                    </div>
+                    <div v-if="currentPath === '/admin/backup'">
+                        <div class="card">
+                            <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                                <el-alert title="系统每天凌晨 02:00 自动备份数据库" type="info" :closable="false" show-icon style="width: 60%;"></el-alert>
+                                <el-button type="primary" @click="handleCreateBackup" :loading="backupLoading">
+                                    <el-icon style="margin-right: 5px;"><Document-Copy /></el-icon> 立即备份
+                                </el-button>
+                            </div>
+
+                            <el-table :data="backupList" stripe style="width: 100%">
+                                <el-table-column prop="fileName" label="文件名"></el-table-column>
+                                <el-table-column prop="size" label="大小" width="120"></el-table-column>
+                                <el-table-column prop="createTime" label="备份时间" width="200"></el-table-column>
+                                <el-table-column label="操作" width="280"> <template #default="scope">
+                                    <el-button type="warning" size="small" plain @click="handleRestoreBackup(scope.row)">
+                                        还原
+                                    </el-button>
+
+                                    <el-button type="success" size="small" plain @click="handleDownloadBackup(scope.row)">
+                                        下载
+                                    </el-button>
+                                    <el-button type="danger" size="small" plain @click="handleDeleteBackup(scope.row)">
+                                        删除
+                                    </el-button>
+                                </template>
+                                </el-table-column>
+                            </el-table>
                         </div>
                     </div>
                 </div>
@@ -498,7 +538,12 @@
                 localStorage.removeItem('userInfo');
                 location.reload();
             };
-
+            const courseQuery = ref({ courseName: '', courseTime: '' });
+            const resetCourseQuery = () => {
+                courseQuery.value = { courseName: '', courseTime: '' };
+                if(userInfo.value.userType === 'student') loadCourses();
+                else if(userInfo.value.userType === 'teacher') loadTeacherCourses();
+            };
             const request = async (url, options = {}) => {
                 if (!options.headers) options.headers = {};
                 if (token.value) options.headers['token'] = token.value;
@@ -553,7 +598,7 @@
             const pageTitle = ref('');
             const menus = computed(() => {
                 const type = userInfo.value.userType;
-                if (type === 'admin') return [{ path: '/admin/users', name: '用户管理' },{ path: '/admin/dashboard', name: '系统概览' }];
+                if (type === 'admin') return [{ path: '/admin/users', name: '用户管理' },{ path: '/admin/dashboard', name: '系统概览' },{ path: '/admin/backup', name: '数据备份' }];
                 if (type === 'teacher') return [{ path: '/teacher/info', name: '个人信息' },{ path: '/teacher/courses', name: '我的课程' }, { path: '/teacher/scores', name: '录入成绩' }];
                 if (type === 'student') return [{ path: '/student/info', name: '个人信息' }, { path: '/student/courses', name: '选课中心' }, { path: '/student/my-scores', name: '我的成绩' }];
                 return [];
@@ -567,6 +612,7 @@
                 if (menu.path === '/teacher/courses') loadTeacherCourses();
                 if (menu.path === '/teacher/info') loadTeacherInfo();
                 if (menu.path === '/admin/users') loadUsers();
+                if (menu.path === '/admin/backup') loadBackups();
                 if (menu.path === '/admin/dashboard') loadDashboard();
             };
 
@@ -588,7 +634,11 @@
             // --- 学生逻辑 ---
             const courseList = ref([]);
             const loadCourses = async () => {
-                const res = await request('/api/courses?courseStatus=1');
+                let url = '/api/courses?courseStatus=1';
+                if (courseQuery.value.courseName) url += `&courseName=${encodeURIComponent(courseQuery.value.courseName)}`;
+                if (courseQuery.value.courseTime) url += `&courseTime=${encodeURIComponent(courseQuery.value.courseTime)}`;
+
+                const res = await request(url);
                 if(res.code === 200) courseList.value = res.data;
             };
             const selectCourse = async (courseId) => {
@@ -640,7 +690,10 @@
             const courseForm = ref({ courseName: '', courseCredit: 3, maxNum: 50 });
 
             const loadTeacherCourses = async () => {
-                const res = await request(`/api/courses?teacherId=${userInfo.value.userId}`);
+                let url = `/api/courses?teacherId=${userInfo.value.userId}`;
+                if (courseQuery.value.courseName) url += `&courseName=${encodeURIComponent(courseQuery.value.courseName)}`;
+
+                const res = await request(url);
                 if(res.code === 200) teacherCourseList.value = res.data;
             };
             const handleEditCourse = (row) => {
@@ -882,6 +935,123 @@
                     initNavigation(userInfo.value.userType);
                 }
             };
+            // --- 备份管理逻辑 ---
+            const backupList = ref([]);
+            const backupLoading = ref(false);
+
+            const loadBackups = async () => {
+                const res = await request('/api/backup');
+                if (res.code === 200) {
+                    backupList.value = res.data;
+                }
+            };
+
+            const handleCreateBackup = async () => {
+                backupLoading.value = true;
+                try {
+                    const res = await request('/api/backup', { method: 'POST' });
+                    if (res.code === 200) {
+                        ElMessage.success('备份成功');
+                        loadBackups();
+                    } else {
+                        ElMessage.error(res.msg || '备份失败，请检查 mysqldump 配置');
+                    }
+                } finally {
+                    backupLoading.value = false;
+                }
+            };
+
+            const handleDeleteBackup = (row) => {
+                ElMessageBox.confirm(`确定删除备份文件 "${row.fileName}" 吗？`, '警告', { type: 'warning' })
+                    .then(async () => {
+                        const res = await request(`/api/backup/${row.fileName}`, { method: 'DELETE' });
+                        if (res.code === 200) {
+                            ElMessage.success('删除成功');
+                            loadBackups();
+                        } else {
+                            ElMessage.error(res.msg);
+                        }
+                    }).catch(() => {});
+            };
+
+            const handleDownloadBackup = async (row) => {
+                try {
+                    ElMessage.info('正在请求下载...');
+
+                    // 1. 使用 fetch 手动发送请求，这样才能带上 token
+                    const res = await fetch(`/api/backup/download/${row.fileName}`, {
+                        method: 'GET',
+                        headers: {
+                            'token': token.value // 关键：手动带上 Token
+                        }
+                    });
+
+                    // 2. 检查响应状态
+                    if (res.status !== 200) {
+                        // 尝试读取后端返回的错误信息 JSON
+                        const err = await res.json().catch(() => {});
+                        ElMessage.error(err?.msg || '下载失败');
+                        return;
+                    }
+
+                    // 3. 将响应转换为 Blob 对象
+                    const blob = await res.blob();
+
+                    // 4. 创建临时的下载链接
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    // 设置下载文件名
+                    link.download = row.fileName;
+                    document.body.appendChild(link);
+
+                    // 5. 触发点击并清理
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url); // 释放内存
+
+                } catch (e) {
+                    console.error(e);
+                    ElMessage.error('下载出错: ' + e.message);
+                }
+            };
+            const handleRestoreBackup = (row) => {
+                ElMessageBox.confirm(
+                    `⚠️ 高危操作警告！\n\n即将把数据库回滚到 [${row.fileName}] 的状态。\n还原后，该时间点之后产生的所有数据都将丢失！\n\n确定要继续吗？`,
+                    '严重警告',
+                    {
+                        confirmButtonText: '确定还原',
+                        cancelButtonText: '取消',
+                        type: 'error',
+                        center: true
+                    }
+                )
+                    .then(async () => {
+                        const loadingInstance = ElementPlus.ElLoading.service({
+                            lock: true,
+                            text: '正在还原数据库，请勿关闭页面...',
+                            background: 'rgba(0, 0, 0, 0.7)',
+                        });
+
+                        try {
+                            // 发送还原请求
+                            const res = await request(`/api/backup/restore/${row.fileName}`, { method: 'POST' });
+                            if (res.code === 200) {
+                                ElMessage.success({
+                                    message: '还原成功！即将刷新页面...',
+                                    duration: 2000,
+                                    onClose: () => location.reload() // 还原后刷新页面重置状态
+                                });
+                            } else {
+                                ElMessage.error(res.msg || '还原失败');
+                            }
+                        } catch (e) {
+                            ElMessage.error('请求异常');
+                        } finally {
+                            loadingInstance.close();
+                        }
+                    }).catch(() => {});
+            };
             initSession();
 
             return {
@@ -892,7 +1062,8 @@
                 teacherCourseList, loadTeacherCourses, addCourseDialog, isEditCourse, handleEditCourse, handleDeleteCourse, courseForm, handleSubmitCourse, selectedCourseId, scoreList, loadStudentScores, submitScore, statsDialogVisible, currentStats, showStats, handleExportScores,
                 userList, loadUsers, addUserDialog, isEditUser, handleEditUser, handleDeleteUser, userForm, handleSubmitUser,
                 pwdDialogVisible, pwdForm, handleUpdatePwd, teacherInfo, loadTeacherInfo, userPage, handlePageChange, editTeacherDialog, teacherForm, openTeacherEditDialog, handleUpdateTeacher,
-                searchForm, handleSearch, resetSearch, timeOptions, roomOptions, uploadHeaders, handleImportSuccess, handleImportError, downloadTemplate,
+                searchForm, courseQuery,resetCourseQuery,handleSearch, resetSearch, timeOptions, roomOptions, uploadHeaders, handleImportSuccess, handleImportError, downloadTemplate,backupList,backupLoading,handleCreateBackup,loadBackups,handleDeleteBackup,handleDownloadBackup
+                ,handleRestoreBackup
             };
         }
     });

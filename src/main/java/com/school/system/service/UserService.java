@@ -32,7 +32,11 @@ public class UserService {
     private AdminMapper adminMapper;
 
     /**
-     * 登录
+     * 用户登录验证
+     * 
+     * @param username 用户名
+     * @param password 密码
+     * @return 登录是否成功
      */
     public boolean login(String username, String password) {
         User user = userMapper.findByUsername(username);
@@ -45,6 +49,9 @@ public class UserService {
 
     /**
      * 管理员：保存或更新用户 (统一入口)
+     * 
+     * @param params 用户参数
+     * @param operatorType 操作者类型
      */
     @Transactional(rollbackFor = Exception.class)
     public void saveOrUpdateUser(Map<String, Object> params, String operatorType) {
@@ -69,7 +76,7 @@ public class UserService {
 
         String pwd = (String) params.get("userPwd");
         if (StringUtils.hasText(pwd)) {
-            user.setUserPwd(pwd); // 下面方法会加密
+            user.setUserPwd(pwd);
         }
 
         if (user.getUserId() == null) {
@@ -81,6 +88,9 @@ public class UserService {
 
     /**
      * 新增用户 (事务)
+     * 
+     * @param user 用户信息
+     * @param extraInfo 额外信息
      */
     @Transactional(rollbackFor = Exception.class)
     public void addUser(User user, Map<String, Object> extraInfo) {
@@ -129,6 +139,9 @@ public class UserService {
 
     /**
      * 全量更新用户 (事务)
+     * 
+     * @param user 用户信息
+     * @param extraInfo 额外信息
      */
     @Transactional(rollbackFor = Exception.class)
     public void updateUserFull(User user, Map<String, Object> extraInfo) {
@@ -173,6 +186,9 @@ public class UserService {
 
     /**
      * 删除用户
+     * 
+     * @param userId 用户ID
+     * @return 删除是否成功
      */
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteUser(Long userId) {
@@ -184,12 +200,14 @@ public class UserService {
         } else if ("teacher".equals(user.getUserType())) {
             teacherMapper.deleteByUserId(userId);
         }
-        // 管理员暂不处理关联表，或按需补充
         return userMapper.deleteById(userId) > 0;
     }
 
     /**
      * 查询用户列表
+     * 
+     * @param condition 查询条件
+     * @return 用户列表
      */
     public List<User> listUsers(User condition) {
         return userMapper.selectList(condition);
@@ -197,6 +215,11 @@ public class UserService {
 
     /**
      * 修改密码
+     * 
+     * @param targetUserId 目标用户ID
+     * @param newPwd 新密码
+     * @param operatorType 操作者类型
+     * @param operatorId 操作者ID
      */
     public void updatePassword(Long targetUserId, String newPwd, String operatorType, Long operatorId) {
         if (!"admin".equals(operatorType) && !targetUserId.equals(operatorId)) {
@@ -210,6 +233,10 @@ public class UserService {
 
     /**
      * 更新个人资料 (学生/教师通用)
+     * 
+     * @param userId 用户ID
+     * @param phone 手机号
+     * @param email 邮箱
      */
     public void updateMyProfile(Long userId, String phone, String email) {
         validateContactInfo(phone, email);
@@ -223,6 +250,9 @@ public class UserService {
 
     /**
      * 校验联系方式
+     * 
+     * @param phone 手机号
+     * @param email 邮箱
      */
     public void validateContactInfo(String phone, String email) {
         if (StringUtils.hasText(phone) && !phone.matches("^\\d{11}$")) {

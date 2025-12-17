@@ -22,13 +22,13 @@ public class StatisticsController {
     @Autowired
     private CourseMapper courseMapper;
 
-    @GetMapping("/dashboard")
     /**
      * 获取首页统计数据：用户分布和热门课程，仅管理员可用。
      *
      * @param currentUserType 当前用户角色
      * @return 统计数据
      */
+    @GetMapping("/dashboard")
     public Result<Map<String, Object>> getDashboardStats(@RequestAttribute("userType") String currentUserType) {
         if (!"admin".equals(currentUserType)) {
             return Result.error("无权限查看统计数据");

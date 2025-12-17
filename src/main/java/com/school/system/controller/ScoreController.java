@@ -28,6 +28,13 @@ public class ScoreController {
         private Integer score;
     }
 
+    /**
+     * 录入成绩
+     * 
+     * @param request 成绩录入请求
+     * @param currentUserType 当前用户类型
+     * @return 录入结果
+     */
     @PostMapping("/entry")
     public Result<Void> setScore(@RequestBody ScoreEntryRequest request,
                                  @RequestAttribute("userType") String currentUserType) {
@@ -38,6 +45,13 @@ public class ScoreController {
         return Result.success(null);
     }
 
+    /**
+     * 获取课程成绩统计
+     * 
+     * @param courseId 课程ID
+     * @param currentUserType 当前用户类型
+     * @return 课程统计结果
+     */
     @GetMapping("/statistics/{courseId}")
     public Result<Object> getCourseStats(@PathVariable Long courseId,
                                          @RequestAttribute("userType") String currentUserType) {
@@ -47,6 +61,13 @@ public class ScoreController {
         return Result.success(scoreService.statisticCourseScore(courseId));
     }
 
+    /**
+     * 查看个人成绩
+     * 
+     * @param currentUserId 当前用户ID
+     * @param currentUserType 当前用户类型
+     * @return 个人成绩列表
+     */
     @GetMapping("/student/me")
     public Result<List<Map<String, Object>>> listMyScores(@RequestAttribute("userId") Long currentUserId,
                                                           @RequestAttribute("userType") String currentUserType) {
@@ -56,6 +77,13 @@ public class ScoreController {
         return Result.success(scoreService.listMyScores(currentUserId));
     }
 
+    /**
+     * 查看课程学生成绩
+     * 
+     * @param courseId 课程ID
+     * @param currentUserType 当前用户类型
+     * @return 学生成绩列表
+     */
     @GetMapping("/course/{courseId}")
     public Result<List<Map<String, Object>>> listStudentScores(@PathVariable Long courseId,
                                                                @RequestAttribute("userType") String currentUserType) {
@@ -65,6 +93,13 @@ public class ScoreController {
         return Result.success(scoreService.listStudentScores(courseId));
     }
 
+    /**
+     * 导出课程成绩
+     * 
+     * @param courseId 课程ID
+     * @param response HTTP响应对象
+     * @param currentUserType 当前用户类型
+     */
     @GetMapping("/export/{courseId}")
     public void exportScores(@PathVariable Long courseId,
                              HttpServletResponse response,

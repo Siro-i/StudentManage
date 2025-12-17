@@ -26,9 +26,11 @@ public class CourseService {
     @Autowired
     private StudentMapper studentMapper;
 
-
     /**
      * 查询课程列表
+     * 
+     * @param condition 查询条件
+     * @return 课程列表
      */
     public List<Course> listCourses(Course condition) {
         return courseMapper.selectList(condition);
@@ -36,6 +38,10 @@ public class CourseService {
 
     /**
      * 添加课程
+     * 
+     * @param course 课程信息
+     * @param userType 用户类型
+     * @param userId 用户ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void addCourse(Course course, String userType, Long userId) {
@@ -60,6 +66,10 @@ public class CourseService {
 
     /**
      * 修改课程
+     * 
+     * @param course 课程信息
+     * @param userType 用户类型
+     * @param userId 用户ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void updateCourse(Course course, String userType, Long userId) {
@@ -84,6 +94,10 @@ public class CourseService {
 
     /**
      * 删除课程（级联删除选课记录）
+     * 
+     * @param courseId 课程ID
+     * @param userType 用户类型
+     * @param userId 用户ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteCourse(Long courseId, String userType, Long userId) {
@@ -107,6 +121,9 @@ public class CourseService {
 
     /**
      * 学生选课
+     * 
+     * @param userId 用户ID
+     * @param courseId 课程ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void selectCourse(Long userId, Long courseId) {
@@ -155,6 +172,9 @@ public class CourseService {
 
     /**
      * 学生退课
+     * 
+     * @param userId 用户ID
+     * @param courseId 课程ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void dropCourse(Long userId, Long courseId) {
@@ -173,6 +193,8 @@ public class CourseService {
 
     /**
      * 内部方法：检查教室占用冲突
+     * 
+     * @param course 课程信息
      */
     private void checkRoomConflict(Course course) {
         if (course.getCourseTime() == null || course.getCourseTime().isEmpty()) return;

@@ -22,13 +22,14 @@ public class AuthController {
 
     @Autowired
     private UserMapper userMapper;
-    @PostMapping("/login")
+
     /**
      * 用户登录接口
      *
      * @param loginData 登录数据，包含用户名和密码
      * @return 登录结果，包含token和用户信息
      */
+    @PostMapping("/login")
     public Result<Map<String, Object>> login(@RequestBody Map<String, String> loginData) {
         String username = loginData.get("userName");
         String password = loginData.get("userPwd");

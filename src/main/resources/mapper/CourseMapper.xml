@@ -10,6 +10,8 @@
         <result column="course_status" property="courseStatus" />
         <result column="max_num" property="maxNum" />
         <result column="selected_num" property="selectedNum" />
+        <result column="course_time" property="courseTime" />
+        <result column="course_room" property="courseRoom" />
     </resultMap>
 
     <select id="selectList" resultMap="BaseResultMap">
@@ -27,31 +29,28 @@
             <if test="courseStatus != null">
                 AND c.course_status = #{courseStatus}
             </if>
+            <if test="courseTime != null and courseTime != ''">
+                AND c.course_time = #{courseTime}
+            </if>
+            <if test="courseRoom != null and courseRoom != ''">
+                AND c.course_room LIKE concat('%', #{courseRoom}, '%')
+            </if>
         </where>
+        ORDER BY c.course_createtime DESC
     </select>
 
     <select id="selectById" resultMap="BaseResultMap">
         SELECT * FROM course_table WHERE course_id = #{courseId}
     </select>
-
     <update id="incrementSelectedNum">
-        UPDATE course_table
-        SET selected_num = selected_num + 1
-        WHERE course_id = #{courseId}
-          AND selected_num &lt; max_num
+        UPDATE course_table SET selected_num = selected_num + 1 WHERE course_id = #{courseId} AND selected_num &lt; max_num
     </update>
-
     <update id="decrementSelectedNum">
-        UPDATE course_table
-        SET selected_num = selected_num - 1
-        WHERE course_id = #{courseId}
-          AND selected_num > 0
+        UPDATE course_table SET selected_num = selected_num - 1 WHERE course_id = #{courseId} AND selected_num > 0
     </update>
     <insert id="insert" useGeneratedKeys="true" keyProperty="courseId">
-        INSERT INTO course_table
-        (course_name, course_credit, max_num, selected_num, course_status, teacher_id, course_time, course_room)
-        VALUES
-            (#{courseName}, #{courseCredit}, #{maxNum}, 0, #{courseStatus}, #{teacherId}, #{courseTime}, #{courseRoom})
+        INSERT INTO course_table (course_name, course_credit, max_num, selected_num, course_status, teacher_id, course_time, course_room)
+        VALUES (#{courseName}, #{courseCredit}, #{maxNum}, 0, #{courseStatus}, #{teacherId}, #{courseTime}, #{courseRoom})
     </insert>
     <delete id="deleteById">
         DELETE FROM course_table WHERE course_id = #{courseId}
@@ -63,7 +62,6 @@
             <if test="courseCredit != null">course_credit = #{courseCredit},</if>
             <if test="maxNum != null">max_num = #{maxNum},</if>
             <if test="courseStatus != null">course_status = #{courseStatus},</if>
-
             <if test="courseTime != null">course_time = #{courseTime},</if>
             <if test="courseRoom != null">course_room = #{courseRoom},</if>
             <if test="selectedNum != null">selected_num = #{selectedNum},</if>
@@ -71,13 +69,9 @@
         WHERE course_id = #{courseId}
     </update>
     <select id="selectByStudentId" resultType="com.school.system.entity.Course">
-        SELECT c.* FROM course_table c
-                            LEFT JOIN student_course_table sc ON c.course_id = sc.course_id
-        WHERE sc.student_id = #{studentId}
+        SELECT c.* FROM course_table c LEFT JOIN student_course_table sc ON c.course_id = sc.course_id WHERE sc.student_id = #{studentId}
     </select>
     <select id="selectByTimeAndRoom" resultType="com.school.system.entity.Course">
-        SELECT * FROM course_table
-        WHERE course_time = #{courseTime}
-          AND course_room = #{courseRoom}
-          AND course_status = 1  </select>
+        SELECT * FROM course_table WHERE course_time = #{courseTime} AND course_room = #{courseRoom} AND course_status = 1
+    </select>
 </mapper>
