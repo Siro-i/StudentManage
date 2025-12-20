@@ -38,4 +38,6 @@ public class Course {
     private String courseTime;
     /** 上课地点 */
     private String courseRoom;
+    /** 版本号（用于乐观锁） */
+    private Integer version;
 }

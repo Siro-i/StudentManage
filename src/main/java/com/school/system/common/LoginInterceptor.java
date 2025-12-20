@@ -25,14 +25,11 @@ public class LoginInterceptor implements HandlerInterceptor {
      * @param request HTTP请求
      * @param response HTTP响应
      * @param handler 处理器
-     * @return 是否继续处理请求
+     * @return 凭证验证结果
      * @throws Exception 异常
      */
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)  {
-        // 放行跨域预检请求
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            return true;
-        }
+
 
         String token = request.getHeader("token");
         if (token == null || token.isEmpty()) {

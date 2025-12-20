@@ -19,6 +19,6 @@ public interface StudentMapper {
     //更新学生信息
     int update(Student student);
 
-    // 关键方法：根据用户ID删除学生档案（级联删除）
+    //根据用户ID删除学生档案（级联删除）
     void deleteByUserId(@Param("userId") Long userId);
 }

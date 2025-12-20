@@ -11,6 +11,7 @@ import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,8 +39,32 @@ public class BackupController {
     @PostMapping
     public Result<Void> createBackup(@RequestAttribute("userType") String userType) {
         if (!"admin".equals(userType)) return Result.error("无权限");
-        backupService.backup();
+
+        // 检查是否忙碌
+        String status = backupService.getTaskStatus("backup");
+        if ("RUNNING".equals(status)) {
+            return Result.error("后台已有备份任务正在进行，请稍候...");
+        }
+
+        // 触发异步任务
+        backupService.backupAsync();
         return Result.success(null);
+    }
+
+    /**
+     * 获取备份任务状态
+     * @param type 任务类型（backup）
+     * @return 任务状态
+     */
+    @GetMapping("/status")
+    public Result<Map<String, String>> getStatus(@RequestParam String type) {
+        Map<String, String> map = new HashMap<>();
+        String status = backupService.getTaskStatus(type);
+        map.put("status", status);
+
+        // 如果是 Success 或 Error，前端读取一次后，可以重置为 IDLE，防止一直显示成功
+        // 这里简化逻辑，只返回状态
+        return Result.success(map);
     }
     /**
      * 删除备份文件
@@ -63,7 +88,6 @@ public class BackupController {
         try {
             File file = backupService.getBackupFile(fileName);
             if (!file.exists()) return;
-
             response.setContentType("application/octet-stream");
             String encodedName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
             response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedName);
@@ -90,7 +114,7 @@ public class BackupController {
     public Result<Void> restoreBackup(@PathVariable String fileName,
                                       @RequestAttribute("userType") String userType) {
         if (!"admin".equals(userType)) return Result.error("无权限");
-        backupService.restore(fileName);
+        backupService.doRestoreInternal(fileName);
         return Result.success(null);
     }
 }

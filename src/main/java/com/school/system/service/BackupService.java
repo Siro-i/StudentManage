@@ -2,13 +2,14 @@ package com.school.system.service;
 
 import com.school.system.common.ServiceException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,13 +34,67 @@ public class BackupService {
 
     // 备份文件存储路径 (项目根目录下的 backup 文件夹)
     private final String BACKUP_DIR = System.getProperty("user.dir") + File.separator + "backup";
+    private static final Map<String, String> taskStatusMap = new ConcurrentHashMap<>();
+
+
+    /**
+     * 获取当前任务状态
+     * @param type 任务类型 (e.g., "backup")
+     * @return 任务状态 (IDLE, RUNNING, SUCCESS, ERROR)
+     */
+    public String getTaskStatus(String type) {
+        return taskStatusMap.getOrDefault(type, "IDLE"); // IDLE: 空闲, RUNNING: 进行中, SUCCESS: 成功, ERROR: 失败
+    }
+
+    /**
+     * 异步触发备份
+     *
+     *
+     */
+    @Async("taskExecutor")
+    public void backupAsync() {
+        if ("RUNNING".equals(taskStatusMap.get("backup"))) {
+            throw new ServiceException("已有备份任务正在进行中");
+        }
+
+        taskStatusMap.put("backup", "RUNNING");
+        System.out.println(">>> [异步任务] 开始后台备份...");
+
+        try {
+            doBackupInternal();
+
+            taskStatusMap.put("backup", "SUCCESS");
+            System.out.println(">>> [异步任务] 备份成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            taskStatusMap.put("backup", "ERROR: " + e.getMessage());
+        } finally {
+        }
+    }
+
+
+    /**
+     * 异步触发恢复
+     *
+     *
+     */
+    @Async("taskExecutor")
+    public void restoreAsync(String fileName) {
+        taskStatusMap.put("restore", "RUNNING");
+        try {
+            doRestoreInternal(fileName); // 原本的 restore 代码
+            taskStatusMap.put("restore", "SUCCESS");
+        } catch (Exception e) {
+            taskStatusMap.put("restore", "ERROR: " + e.getMessage());
+        }
+    }
 
     /**
      * 执行数据库备份
      *
      *
      */
-    public void backup() {
+    public void doBackupInternal() {
         String dbName = getDbNameFromUrl(dbUrl);
         File file = new File(BACKUP_DIR);
         if (!file.exists()) file.mkdirs();
@@ -73,7 +128,6 @@ public class BackupService {
                 }
             }).start();
 
-            // 主线程只负责读取“标准输出流”（纯净的 SQL 数据）并写入文件
             try (java.io.InputStream in = process.getInputStream();
                  java.io.FileOutputStream out = new java.io.FileOutputStream(saveFile)) {
                 byte[] buffer = new byte[1024 * 4];
@@ -103,7 +157,7 @@ public class BackupService {
     @Scheduled(cron = "0 0 2 * * ?")
     public void scheduledBackup() {
         System.out.println(">>> 开始执行定时备份任务...");
-        backup();
+        backupAsync();
         System.out.println(">>> 定时备份完成");
     }
 
@@ -113,6 +167,7 @@ public class BackupService {
      */
     public List<Map<String, Object>> listBackups() {
         File dir = new File(BACKUP_DIR);
+
         if (!dir.exists()) return new ArrayList<>();
 
         File[] files = dir.listFiles((d, name) -> name.endsWith(".sql"));
@@ -161,12 +216,14 @@ public class BackupService {
         return clean;
     }
 
+
+
     /**
      * 数据库还原
      * @param fileName 备份文件名
      *
      */
-    public void restore(String fileName) {
+    public void doRestoreInternal(String fileName) {
         File file = new File(BACKUP_DIR, fileName);
         if (!file.exists()) {
             throw new ServiceException("备份文件不存在");
@@ -185,7 +242,6 @@ public class BackupService {
 
             ProcessBuilder processBuilder = new ProcessBuilder(cmd);
             processBuilder.redirectErrorStream(true); // 合并错误流
-
             Process process = processBuilder.start();
 
             try (java.io.OutputStream out = process.getOutputStream();

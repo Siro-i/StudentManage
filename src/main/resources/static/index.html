@@ -521,14 +521,14 @@
 <script src="https://unpkg.com/@element-plus/icons-vue"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
-    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+    const { createApp, ref, computed,  nextTick } = Vue;
     const { ElMessage, ElMessageBox } = ElementPlus;
     const app = createApp({
         setup() {
             // ================= 1. 核心封装 =================
             const token = ref(localStorage.getItem('token') || '');
 
-             //上传Header
+
             const uploadHeaders = computed(() => ({
                 'token': token.value
             }));
@@ -863,7 +863,7 @@
                 } catch (e) { ElMessage.error('下载出错'); }
             };
 
-            // --- 仪表盘 (修复ECharts初始化) ---
+            // --- 仪表盘  ---
             let myUserChart = null;
             let myCourseChart = null;
 
@@ -947,18 +947,34 @@
             };
 
             const handleCreateBackup = async () => {
-                backupLoading.value = true;
-                try {
-                    const res = await request('/api/backup', { method: 'POST' });
-                    if (res.code === 200) {
-                        ElMessage.success('备份成功');
-                        loadBackups();
-                    } else {
-                        ElMessage.error(res.msg || '备份失败，请检查 mysqldump 配置');
-                    }
-                } finally {
-                    backupLoading.value = false;
+                // 1. 发起请求
+                const res = await request('/api/backup', { method: 'POST' });
+                if (res.code !== 200) {
+                    ElMessage.error(res.msg);
+                    return;
                 }
+                // 2. 进入轮询模式
+                backupLoading.value = true;
+                ElMessage.info('备份任务已提交后台，正在执行...');
+
+                // 设置定时器，每 1 秒查一次
+                const timer = setInterval(async () => {
+                    const statusRes = await request('/api/backup/status?type=backup');
+                    const status = statusRes.data.status;
+
+                    if (status === 'SUCCESS') {
+                        clearInterval(timer); // 停止轮询
+                        backupLoading.value = false;
+                        ElMessage.success('备份成功！');
+                        loadBackups();
+                    } else if (status.startsWith('ERROR')) {
+                        clearInterval(timer);
+                        backupLoading.value = false;
+                        ElMessage.error('备份失败: ' + status);
+                    } else {
+                        console.log('备份进行中...');
+                    }
+                }, 1000);
             };
 
             const handleDeleteBackup = (row) => {
@@ -978,11 +994,11 @@
                 try {
                     ElMessage.info('正在请求下载...');
 
-                    // 1. 使用 fetch 手动发送请求，这样才能带上 token
+                    // 1. 使用 fetch 手动发送请求
                     const res = await fetch(`/api/backup/download/${row.fileName}`, {
                         method: 'GET',
                         headers: {
-                            'token': token.value // 关键：手动带上 Token
+                            'token': token.value
                         }
                     });
 
@@ -1001,14 +1017,13 @@
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    // 设置下载文件名
                     link.download = row.fileName;
                     document.body.appendChild(link);
 
                     // 5. 触发点击并清理
                     link.click();
                     document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url); // 释放内存
+                    window.URL.revokeObjectURL(url);
 
                 } catch (e) {
                     console.error(e);

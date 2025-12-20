@@ -43,7 +43,10 @@
         SELECT * FROM course_table WHERE course_id = #{courseId}
     </select>
     <update id="incrementSelectedNum">
-        UPDATE course_table SET selected_num = selected_num + 1 WHERE course_id = #{courseId} AND selected_num &lt; max_num
+        UPDATE course_table
+        SET selected_num = selected_num + 1, version = version + 1
+        WHERE course_id = #{courseId}
+          AND selected_num &lt; max_num
     </update>
     <update id="decrementSelectedNum">
         UPDATE course_table SET selected_num = selected_num - 1 WHERE course_id = #{courseId} AND selected_num > 0
