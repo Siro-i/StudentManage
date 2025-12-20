@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.school.system.mapper.AdminMapper">
+
+    <resultMap id="BaseResultMap" type="com.school.system.entity.Admin">
+        <id column="admin_id" property="adminId" />
+        <result column="user_id" property="userId" />
+        <result column="admin_title" property="adminTitle" />
+        <result column="admin_createtime" property="adminCreatetime" />
+        <result column="admin_updatetime" property="adminUpdatetime" />
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO admin_table
+            (user_id, admin_title, admin_createtime, admin_updatetime)
+        VALUES
+            (#{userId}, #{adminTitle}, #{adminCreatetime}, #{adminUpdatetime})
+    </insert>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM admin_table WHERE user_id = #{userId}
+    </select>
+
+    <update id="updateById">
+        UPDATE admin_table
+        <set>
+            <if test="adminTitle != null">admin_title = #{adminTitle},</if>
+            <if test="adminUpdatetime != null">admin_updatetime = #{adminUpdatetime},</if>
+        </set>
+        WHERE admin_id = #{adminId}
+    </update>
+</mapper>

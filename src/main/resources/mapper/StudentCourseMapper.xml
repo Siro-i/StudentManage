@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.school.system.mapper.StudentCourseMapper">
+
+    <resultMap id="BaseResultMap" type="com.school.system.entity.StudentCourse">
+        <id column="sc_id" property="scId" />
+        <result column="student_id" property="studentId" />
+        <result column="course_id" property="courseId" />
+        <result column="sc_score" property="scScore" />
+        <result column="sc_selecttime" property="scSelecttime" />
+    </resultMap>
+
+    <select id="findByStudentAndCourse" resultMap="BaseResultMap">
+        SELECT * FROM student_course_table
+        WHERE student_id = #{studentId} AND course_id = #{courseId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO student_course_table (student_id, course_id, sc_selecttime)
+        VALUES (#{studentId}, #{courseId}, #{scSelecttime})
+    </insert>
+
+    <select id="selectStudentScoreList" resultType="java.util.Map">
+        SELECT
+            sc.sc_id         AS scId,
+            sc.student_id    AS studentId,
+            sc.course_id     AS courseId,
+            sc.sc_score      AS scScore,
+            sc.sc_selecttime AS selectTime,
+            u.user_real_name AS studentRealName,
+            u.user_name      AS studentNumber,
+            s.student_class  AS studentClass,
+            c.course_name    AS courseName
+        FROM student_course_table sc
+                 LEFT JOIN student_table s ON sc.student_id = s.student_id
+                 LEFT JOIN user_table u ON s.user_id = u.user_id
+                 LEFT JOIN course_table c ON sc.course_id = c.course_id
+        WHERE sc.course_id = #{courseId}
+    </select>
+
+    <delete id="deleteByStudentAndCourse">
+        DELETE FROM student_course_table
+        WHERE student_id = #{studentId} AND course_id = #{courseId}
+    </delete>
+
+    <update id="updateScore">
+        UPDATE student_course_table
+        SET sc_score = #{scScore},
+            sc_updatetime = #{scUpdatetime}
+        WHERE student_id = #{studentId} AND course_id = #{courseId}
+    </update>
+
+    <select id="getCourseStatistics" resultType="java.util.Map">
+        SELECT
+            AVG(sc_score) as avgScore,
+            MAX(sc_score) as maxScore,
+            MIN(sc_score) as minScore,
+            COUNT(CASE WHEN sc_score >= 60 THEN 1 END) as passCount,
+            COUNT(*) as totalCount
+        FROM student_course_table
+        WHERE course_id = #{courseId} AND sc_score IS NOT NULL
+    </select>
+    <select id="selectMyScoreList" resultType="java.util.Map">
+        SELECT
+            c.course_id         AS courseId,
+            c.course_name       AS courseName,
+            c.course_credit     AS courseCredit,
+            u.user_real_name    AS teacherName,
+            sc.sc_score         AS score,
+            sc.sc_selecttime    AS selectTime
+        FROM student_course_table sc
+                 LEFT JOIN course_table c ON sc.course_id = c.course_id
+                 LEFT JOIN user_table u ON c.teacher_id = u.user_id
+        WHERE sc.student_id = #{studentId}
+        ORDER BY sc.sc_selecttime DESC
+    </select>
+    <delete id="deleteByCourseId">
+        DELETE FROM student_course_table WHERE course_id = #{courseId}
+    </delete>
+    <select id="countByStudentIdAndCourseId" resultType="int">
+        SELECT count(*) FROM student_course_table
+        WHERE student_id = #{studentId} AND course_id = #{courseId}
+    </select>
+
+
+</mapper>

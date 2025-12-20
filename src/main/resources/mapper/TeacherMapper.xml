@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.school.system.mapper.TeacherMapper">
+
+    <resultMap id="BaseResultMap" type="com.school.system.entity.Teacher">
+        <id column="teacher_id" property="teacherId" />
+        <result column="user_id" property="userId" />
+        <result column="teacher_college" property="teacherCollege" />
+        <result column="teacher_title" property="teacherTitle" />
+        <result column="teacher_createtime" property="teacherCreatetime" />
+        <result column="teacher_updatetime" property="teacherUpdatetime" />
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="teacherId">
+        INSERT INTO teacher_table
+        (user_id, teacher_college, teacher_title, teacher_createtime, teacher_updatetime)
+        VALUES
+            (#{userId}, #{teacherCollege}, #{teacherTitle}, #{teacherCreatetime}, #{teacherUpdatetime})
+    </insert>
+
+    <select id="selectByUserId" resultType="com.school.system.entity.Teacher">
+
+        SELECT * FROM teacher_table WHERE user_id = #{userId}
+    </select>
+
+    <update id="update">
+        UPDATE teacher_table
+        <set>
+            <if test="teacherCollege != null">teacher_college = #{teacherCollege},</if>
+            <if test="teacherTitle != null">teacher_title = #{teacherTitle},</if>
+        </set>
+        WHERE teacher_id = #{teacherId}
+    </update>
+
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT * FROM teacher_table
+        <where>
+            <if test="teacherCollege != null and teacherCollege != ''">
+                AND teacher_college = #{teacherCollege}
+            </if>
+        </where>
+    </select>
+
+    <update id="updateById">
+        UPDATE teacher_table
+        <set>
+            <if test="teacherCollege != null">teacher_college = #{teacherCollege},</if>
+            <if test="teacherTitle != null">teacher_title = #{teacherTitle},</if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+
+</mapper>

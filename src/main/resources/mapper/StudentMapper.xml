@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.school.system.mapper.StudentMapper">
+
+    <resultMap id="BaseResultMap" type="com.school.system.entity.Student">
+        <id column="student_id" property="studentId" />
+        <result column="user_id" property="userId" />
+        <result column="student_college" property="studentCollege" />
+        <result column="student_grade" property="studentGrade" />
+        <result column="student_class" property="studentClass" />
+        <result column="student_createtime" property="studentCreatetime" />
+        <result column="student_updatetime" property="studentUpdatetime" />
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="studentId">
+        INSERT INTO student_table
+        (user_id, student_college, student_grade, student_class, student_createtime, student_updatetime)
+        VALUES
+            (#{userId}, #{studentCollege}, #{studentGrade}, #{studentClass}, #{studentCreatetime}, #{studentUpdatetime})
+    </insert>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM student_table WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT * FROM student_table WHERE student_id = #{studentId}
+    </select>
+
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT * FROM student_table
+        <where>
+            <if test="studentCollege != null and studentCollege != ''">
+                AND student_college = #{studentCollege}
+            </if>
+            <if test="studentClass != null and studentClass != ''">
+                AND student_class = #{studentClass}
+            </if>
+        </where>
+    </select>
+
+    <update id="update">
+        UPDATE student_table
+        <set>
+            <if test="studentCollege != null">student_college = #{studentCollege},</if>
+            <if test="studentClass != null">student_class = #{studentClass},</if>
+            <if test="studentGrade != null">student_grade = #{studentGrade},</if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+    <delete id="deleteByCourseId">
+        DELETE FROM student_course_table WHERE course_id = #{courseId}
+    </delete>
+    <delete id="deleteByUserId">
+        DELETE FROM student_table WHERE user_id = #{userId}
+    </delete>
+
+</mapper>
