@@ -68,7 +68,6 @@ public class BackupService {
         } catch (Exception e) {
             e.printStackTrace();
             taskStatusMap.put("backup", "ERROR: " + e.getMessage());
-        } finally {
         }
     }
 
@@ -82,7 +81,7 @@ public class BackupService {
     public void restoreAsync(String fileName) {
         taskStatusMap.put("restore", "RUNNING");
         try {
-            doRestoreInternal(fileName); // 原本的 restore 代码
+            doRestoreInternal(fileName);
             taskStatusMap.put("restore", "SUCCESS");
         } catch (Exception e) {
             taskStatusMap.put("restore", "ERROR: " + e.getMessage());

@@ -159,15 +159,16 @@ public class CourseService {
             }
         }
 
-        // 写入
+
+        int rows = courseMapper.incrementSelectedNum(courseId);
+        if (rows == 0) {
+            throw new ServiceException("选课失败：课程名额已满");
+        }
         StudentCourse sc = new StudentCourse();
         sc.setStudentId(trueStudentId);
         sc.setCourseId(courseId);
         sc.setScSelecttime(new Date());
         studentCourseMapper.insert(sc);
-
-        // 更新人数
-        courseMapper.incrementSelectedNum(courseId);
     }
 
     /**

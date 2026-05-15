@@ -31,14 +31,13 @@ public class UserService {
     @Autowired
     private AdminMapper adminMapper;
 
-    /**
-     * 用户登录验证
-     * 
-     * @param username 用户名
-     * @param password 密码
-     * @return 登录是否成功
-     */
-    public boolean login(String username, String password) {
+    @Autowired
+    private CaptchaService captchaService;
+
+    public boolean login(String username, String password, String captchaId, String captchaCode) {
+        if (!captchaService.verifyCaptcha(captchaId, captchaCode)) {
+            throw new ServiceException("验证码错误");
+        }
         User user = userMapper.findByUsername(username);
         if (user == null) {
             return false;
