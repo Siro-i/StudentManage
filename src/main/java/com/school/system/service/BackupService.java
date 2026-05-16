@@ -275,6 +275,53 @@ public class BackupService {
     }
 
     /**
+     * 从上传文件还原数据库
+     * @param inputStream 上传的SQL文件输入流
+     * @param fileName 上传的文件名
+     */
+    public void restoreFromUpload(java.io.InputStream inputStream, String fileName) {
+        String dbName = getDbNameFromUrl(dbUrl);
+
+        try {
+            List<String> cmd = new ArrayList<>();
+            cmd.add(clientPath);
+            cmd.add("-u" + dbUser);
+            cmd.add("-p" + dbPass);
+            cmd.add(dbName);
+
+            ProcessBuilder processBuilder = new ProcessBuilder(cmd);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+            try (java.io.OutputStream out = process.getOutputStream()) {
+                byte[] buffer = new byte[1024 * 4];
+                int len;
+                while ((len = inputStream.read(buffer)) > 0) {
+                    out.write(buffer, 0, len);
+                }
+                out.flush();
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(process.getInputStream(), "GBK"))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.err.println("RESTORE LOG: " + line);
+                    }
+                }
+                throw new ServiceException("还原失败，错误码: " + exitCode);
+            }
+            System.out.println(">>> 数据库还原成功(上传文件): " + fileName);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new ServiceException("还原异常: " + e.getMessage());
+        }
+    }
+
+    /**
      * 定时清理旧备份
      * 策略：每月1号凌晨3点执行，删除 30 天前的文件
      *

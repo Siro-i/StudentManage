@@ -63,6 +63,14 @@ public class UserService {
         String email = (String) params.get("userEmail");
         validateContactInfo(phone, email);
 
+        Long userId = params.get("userId") != null ? Long.parseLong(params.get("userId").toString()) : null;
+        if (StringUtils.hasText(phone)) {
+            User phoneExist = userMapper.findByPhone(phone);
+            if (phoneExist != null && phoneExist.getUserId() != null && !phoneExist.getUserId().equals(userId)) {
+                throw new ServiceException("手机号已被其他用户使用");
+            }
+        }
+
         User user = new User();
         if (params.get("userId") != null) {
             user.setUserId(Long.valueOf(params.get("userId").toString()));
@@ -99,6 +107,11 @@ public class UserService {
 
         User exist = userMapper.findByUsername(user.getUserName());
         if (exist != null) throw new ServiceException("账号已存在");
+
+        if (StringUtils.hasText(user.getUserPhone())) {
+            User phoneExist = userMapper.findByPhone(user.getUserPhone());
+            if (phoneExist != null) throw new ServiceException("手机号已被使用");
+        }
 
         // 密码处理
         String rawPwd = StringUtils.hasText(user.getUserPwd()) ? user.getUserPwd() : "123456";
@@ -239,6 +252,14 @@ public class UserService {
      */
     public void updateMyProfile(Long userId, String phone, String email) {
         validateContactInfo(phone, email);
+
+        if (StringUtils.hasText(phone)) {
+            User phoneExist = userMapper.findByPhone(phone);
+            if (phoneExist != null && !phoneExist.getUserId().equals(userId)) {
+                throw new ServiceException("手机号已被其他用户使用");
+            }
+        }
+
         User user = new User();
         user.setUserId(userId);
         user.setUserPhone(phone);

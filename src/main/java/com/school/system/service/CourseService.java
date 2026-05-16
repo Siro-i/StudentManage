@@ -127,29 +127,22 @@ public class CourseService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void selectCourse(Long userId, Long courseId) {
-        // 转换 ID
         Student student = studentMapper.selectByUserId(userId);
         if (student == null) {
             throw new ServiceException("未找到学生档案，无法选课");
         }
         Long trueStudentId = student.getStudentId();
 
-        // 重复校验
         StudentCourse existing = studentCourseMapper.findByStudentAndCourse(trueStudentId, courseId);
         if (existing != null) {
             throw new ServiceException("请勿重复选课");
         }
 
-        // 名额与状态校验
         Course course = courseMapper.selectById(courseId);
         if (course == null || (course.getCourseStatus() != null && course.getCourseStatus() == 0)) {
             throw new ServiceException("课程已停止选课");
         }
-        if (course.getSelectedNum() >= course.getMaxNum()) {
-            throw new ServiceException("该课程名额已满");
-        }
 
-        // 时间冲突校验
         if (course.getCourseTime() != null && !course.getCourseTime().isEmpty()) {
             List<Course> myCourses = courseMapper.selectByStudentId(trueStudentId);
             for (Course existingCourse : myCourses) {
@@ -159,16 +152,24 @@ public class CourseService {
             }
         }
 
-
         int rows = courseMapper.incrementSelectedNum(courseId);
         if (rows == 0) {
             throw new ServiceException("选课失败：课程名额已满");
         }
+
         StudentCourse sc = new StudentCourse();
         sc.setStudentId(trueStudentId);
         sc.setCourseId(courseId);
         sc.setScSelecttime(new Date());
-        studentCourseMapper.insert(sc);
+        try {
+            studentCourseMapper.insert(sc);
+        } catch (Exception e) {
+            courseMapper.decrementSelectedNum(courseId);
+            if (e.getMessage() != null && e.getMessage().contains("Duplicate entry")) {
+                throw new ServiceException("请勿重复选课");
+            }
+            throw new ServiceException("选课失败：" + e.getMessage());
+        }
     }
 
     /**

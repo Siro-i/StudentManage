@@ -51,5 +51,8 @@
         WHERE user_id = #{userId}
     </update>
 
+    <delete id="deleteByUserId">
+        DELETE FROM teacher_table WHERE user_id = #{userId}
+    </delete>
 
 </mapper>

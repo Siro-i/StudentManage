@@ -16,6 +16,10 @@
         SELECT * FROM user_table WHERE user_name = #{username}
     </select>
 
+    <select id="findByPhone" resultMap="BaseResultMap">
+        SELECT * FROM user_table WHERE user_phone = #{phone}
+    </select>
+
     <select id="selectById" resultMap="BaseResultMap">
         SELECT * FROM user_table WHERE user_id = #{userId}
     </select>

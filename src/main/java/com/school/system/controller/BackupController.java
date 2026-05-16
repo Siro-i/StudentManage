@@ -5,9 +5,11 @@ import com.school.system.service.BackupService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -116,5 +118,34 @@ public class BackupController {
         if (!"admin".equals(userType)) return Result.error("无权限");
         backupService.doRestoreInternal(fileName);
         return Result.success(null);
+    }
+
+    /**
+     * 从本地上传文件还原数据库
+     * @param file 上传的SQL文件
+     * @param userType 用户类型
+     * @return 成功响应
+     */
+    @PostMapping("/restore/upload")
+    public Result<Void> restoreFromUpload(@RequestParam("file") MultipartFile file,
+                                          @RequestAttribute("userType") String userType) {
+        if (!"admin".equals(userType)) return Result.error("无权限");
+
+        if (file == null || file.isEmpty()) {
+            return Result.error("请选择要还原的SQL文件");
+        }
+
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || !fileName.toLowerCase().endsWith(".sql")) {
+            return Result.error("请上传 .sql 格式的文件");
+        }
+
+        try {
+            InputStream inputStream = file.getInputStream();
+            backupService.restoreFromUpload(inputStream, fileName);
+            return Result.success(null);
+        } catch (Exception e) {
+            return Result.error("还原失败: " + e.getMessage());
+        }
     }
 }

@@ -11,6 +11,9 @@ public interface UserMapper {
     // 根据用户名查找（登录用）
     User findByUsername(@Param("username") String username);
 
+    // 根据手机号查找（验重用）
+    User findByPhone(@Param("phone") String phone);
+
     // 根据ID查找
     User selectById(@Param("userId") Long userId);
 

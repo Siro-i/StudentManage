@@ -601,9 +601,12 @@
                                             <el-icon size="20"><InfoFilled /></el-icon>
                                             <span>系统将在每天凌晨 02:00 自动执行全量备份，旧备份（>30天）将自动清理。</span>
                                         </div>
-                                        <el-button type="primary" @click="handleCreateBackup" :loading="backupLoading" icon="DocumentCopy">
-                                            立即执行备份
-                                        </el-button>
+                                        <div style="display: flex; gap: 10px;">
+                                            <el-upload action="/api/backup/restore/upload" :headers="uploadHeaders" :show-file-list="false" :on-success="handleRestoreUploadSuccess" :on-error="handleRestoreUploadError" accept=".sql">
+                                                <el-button type="warning" icon="Upload">从本地还原</el-button>
+                                            </el-upload>
+                                            <el-button type="primary" @click="handleCreateBackup" :loading="backupLoading" icon="DocumentCopy">立即执行备份</el-button>
+                                        </div>
                                     </div>
 
                                     <el-table :data="backupList" stripe>
@@ -848,7 +851,10 @@
             };
 
             const initNavigation = (type) => {
-                if(type === 'admin') handleNav({path: '/admin/dashboard', name:'系统概览'});
+                if(type === 'admin') {
+                    handleNav({path: '/admin/dashboard', name:'系统概览'});
+                    setTimeout(() => loadDashboard(), 300);
+                }
                 else if(type === 'teacher') handleNav({path: '/teacher/courses', name:'我的课程'});
                 else if(type === 'student') handleNav({path: '/student/courses', name:'选课中心'});
             }
@@ -1147,14 +1153,9 @@
             const loadDashboard = async () => {
                 const res = await request('/api/stats/dashboard');
                 if (res.code !== 200) return;
-                nextTick(() => {
-                    initUserChart(res.data.userStats);
-                    initCourseChart(res.data.courseStats);
-                });
+                setTimeout(() => { initUserChart(res.data.userStats); initCourseChart(res.data.courseStats); }, 100);
             };
-            const initUserChart = (data) => {
-                const dom = document.getElementById('userChart');
-                if(!dom) return;
+            const initUserChart = (data) => { const tryInit = (attempt = 0) => { const dom = document.getElementById("userChart"); if(!dom) { if(attempt < 5) setTimeout(() => tryInit(attempt + 1), 100); return; }
                 if(myUserChart) myUserChart.dispose();
                 myUserChart = echarts.init(dom);
                 myUserChart.setOption({
@@ -1172,11 +1173,9 @@
                         ]
                     }]
                 });
-                window.onresize = () => myUserChart.resize();
+                window.onresize = () => myUserChart.resize(); }; tryInit();
             };
-            const initCourseChart = (list) => {
-                const dom = document.getElementById('courseChart');
-                if(!dom) return;
+            const initCourseChart = (list) => { const tryInit = (attempt = 0) => { const dom = document.getElementById("courseChart"); if(!dom) { if(attempt < 5) setTimeout(() => tryInit(attempt + 1), 100); return; }
                 if(myCourseChart) myCourseChart.dispose();
                 myCourseChart = echarts.init(dom);
                 myCourseChart.setOption({
@@ -1190,8 +1189,7 @@
                         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#818cf8'}, {offset: 1, color: '#4f46e5'}]) }
                     }]
                 });
-                window.onresize = () => myCourseChart.resize();
-            };
+                window.onresize = () => myCourseChart.resize(); }; tryInit(); }
 
             // --- 密码与初始化 ---
             const pwdDialogVisible = ref(false);
@@ -1333,6 +1331,18 @@
             };
             initSession();
 
+            // 上传还原 handlers
+            const handleRestoreUploadSuccess = (res) => {
+                if (res.code === 200) {
+                    ElMessage.success({ message: '还原成功！即将刷新页面...', duration: 2000, onClose: () => location.reload() });
+                } else {
+                    ElMessage.error(res.msg || '还原失败');
+                }
+            };
+            const handleRestoreUploadError = () => {
+                ElMessage.error('上传失败，请检查文件格式');
+            };
+
             return {
                 currentView, loading, loginForm, handleLogin, handleLogout,
                 captchaImage, captchaRefreshKey, loadCaptcha,
@@ -1342,8 +1352,7 @@
                 teacherCourseList, loadTeacherCourses, addCourseDialog, isEditCourse, handleEditCourse, handleDeleteCourse, courseForm, handleSubmitCourse, selectedCourseId, scoreList, loadStudentScores, submitScore, statsDialogVisible, currentStats, showStats, handleExportScores,
                 userList, loadUsers, addUserDialog, isEditUser, handleEditUser, handleDeleteUser, userForm, handleSubmitUser,
                 pwdDialogVisible, pwdForm, handleUpdatePwd, teacherInfo, loadTeacherInfo, userPage, handlePageChange, editTeacherDialog, teacherForm, openTeacherEditDialog, handleUpdateTeacher,
-                searchForm, courseQuery,resetCourseQuery,handleSearch, resetSearch, timeOptions, roomOptions, uploadHeaders, handleImportSuccess, handleImportError, downloadTemplate,backupList,backupLoading,handleCreateBackup,loadBackups,handleDeleteBackup,handleDownloadBackup
-                ,handleRestoreBackup, User, Lock, Search, Refresh, Plus, Upload, Delete, Download, Document, DocumentCopy, RefreshLeft, Edit, Key, SwitchButton
+                searchForm, courseQuery,resetCourseQuery,handleSearch, resetSearch, timeOptions, roomOptions, uploadHeaders, handleImportSuccess, handleImportError, downloadTemplate,backupList,backupLoading,handleCreateBackup,loadBackups,handleDeleteBackup,handleDownloadBackup,handleRestoreBackup,handleRestoreUploadSuccess,handleRestoreUploadError, User, Lock, Search, Refresh, Plus, Upload, Delete, Download, Document, DocumentCopy, RefreshLeft, Edit, Key, SwitchButton
             };
         }
     });
@@ -1958,9 +1967,12 @@
                                             <el-icon size="20"><InfoFilled /></el-icon>
                                             <span>系统将在每天凌晨 02:00 自动执行全量备份，旧备份（>30天）将自动清理。</span>
                                         </div>
-                                        <el-button type="primary" @click="handleCreateBackup" :loading="backupLoading" icon="DocumentCopy">
-                                            立即执行备份
-                                        </el-button>
+                                        <div style="display: flex; gap: 10px;">
+                                            <el-upload action="/api/backup/restore/upload" :headers="uploadHeaders" :show-file-list="false" :on-success="handleRestoreUploadSuccess" :on-error="handleRestoreUploadError" accept=".sql">
+                                                <el-button type="warning" icon="Upload">从本地还原</el-button>
+                                            </el-upload>
+                                            <el-button type="primary" @click="handleCreateBackup" :loading="backupLoading" icon="DocumentCopy">立即执行备份</el-button>
+                                        </div>
                                     </div>
 
                                     <el-table :data="backupList" stripe>
@@ -2205,7 +2217,10 @@
             };
 
             const initNavigation = (type) => {
-                if(type === 'admin') handleNav({path: '/admin/dashboard', name:'系统概览'});
+                if(type === 'admin') {
+                    handleNav({path: '/admin/dashboard', name:'系统概览'});
+                    setTimeout(() => loadDashboard(), 300);
+                }
                 else if(type === 'teacher') handleNav({path: '/teacher/courses', name:'我的课程'});
                 else if(type === 'student') handleNav({path: '/student/courses', name:'选课中心'});
             }
@@ -2504,14 +2519,9 @@
             const loadDashboard = async () => {
                 const res = await request('/api/stats/dashboard');
                 if (res.code !== 200) return;
-                nextTick(() => {
-                    initUserChart(res.data.userStats);
-                    initCourseChart(res.data.courseStats);
-                });
+                setTimeout(() => { initUserChart(res.data.userStats); initCourseChart(res.data.courseStats); }, 100);
             };
-            const initUserChart = (data) => {
-                const dom = document.getElementById('userChart');
-                if(!dom) return;
+            const initUserChart = (data) => { const tryInit = (attempt = 0) => { const dom = document.getElementById("userChart"); if(!dom) { if(attempt < 5) setTimeout(() => tryInit(attempt + 1), 100); return; }
                 if(myUserChart) myUserChart.dispose();
                 myUserChart = echarts.init(dom);
                 myUserChart.setOption({
@@ -2529,11 +2539,9 @@
                         ]
                     }]
                 });
-                window.onresize = () => myUserChart.resize();
+                window.onresize = () => myUserChart.resize(); }; tryInit();
             };
-            const initCourseChart = (list) => {
-                const dom = document.getElementById('courseChart');
-                if(!dom) return;
+            const initCourseChart = (list) => { const tryInit = (attempt = 0) => { const dom = document.getElementById("courseChart"); if(!dom) { if(attempt < 5) setTimeout(() => tryInit(attempt + 1), 100); return; }
                 if(myCourseChart) myCourseChart.dispose();
                 myCourseChart = echarts.init(dom);
                 myCourseChart.setOption({
@@ -2547,8 +2555,7 @@
                         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: '#818cf8'}, {offset: 1, color: '#4f46e5'}]) }
                     }]
                 });
-                window.onresize = () => myCourseChart.resize();
-            };
+                window.onresize = () => myCourseChart.resize(); }; tryInit(); }
 
             // --- 密码与初始化 ---
             const pwdDialogVisible = ref(false);
